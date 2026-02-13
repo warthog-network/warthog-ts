@@ -14,8 +14,8 @@ export class ParsedFunds {
         let digitsAfterDot = 0;
         let dotFound = false;
 
-        for (let char of s) {
-            if (char in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]) {
+        for (const char of s) {
+            if (char >= "0" && char <= "9") {
                 if (str.length >= MAX_DIGITS) {
                     return null;
                 }
@@ -32,13 +32,14 @@ export class ParsedFunds {
                 return null;
             }
         }
+
         if (str.length === 0) {
             return null;
         }
 
         const val = BigInt(str);
 
-        if (val > BigInt(18446744073709551615n)) {
+        if (val > 18446744073709551615n) {
             return null;
         }
 

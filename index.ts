@@ -1,1 +1,1 @@
-export { ParsedFunds } from "src/types/parsedfunds";
+export { ParsedFunds } from "src/types/ParsedFunds";
