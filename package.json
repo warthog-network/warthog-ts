@@ -1,11 +1,29 @@
 {
-  "name": "warthog-ts",
-  "module": "index.ts",
-  "type": "module",
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  }
+    "name": "warthog-ts",
+    "version": "0.1.0",
+    "description": "a TypeScript library for the Warthog cryptocurrency",
+    "type": "module",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "clean": "rimraf ./dist",
+        "prepublishOnly": "npm run clean && npm run build"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5"
+    },
+    "peerDependencies": {}
 }
