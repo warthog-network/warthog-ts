@@ -1,8 +1,10 @@
+import { MAX_U64 } from "../utils/int";
+
 export class ParsedFunds {
     val: bigint;
-    decimalPlaces: Uint8Array;
+    decimalPlaces: number;
 
-    constructor(val: bigint, decimalPlaces: Uint8Array) {
+    constructor(val: bigint, decimalPlaces: number) {
         this.val = val;
         this.decimalPlaces = decimalPlaces;
     }
@@ -39,11 +41,10 @@ export class ParsedFunds {
 
         const val = BigInt(str);
 
-        if (val > 18446744073709551615n) {
+        if (val > MAX_U64) {
             return null;
         }
 
-        const decimalPlaces = Uint8Array.from([digitsAfterDot]);
-        return new ParsedFunds(val, decimalPlaces);
+        return new ParsedFunds(val, digitsAfterDot);
     }
 }
