@@ -1,7 +1,7 @@
 import type { ApiResponse } from "./types/common";
 import { WarthogApiError } from "./types/common";
 import type { BlockIdHash, ChainHead, BlockHeader, Block } from "./types/chain";
-
+import type { Balance } from "./types/account";
 export interface WarthogClientOptions {
     nodeUrl: string;
 }
@@ -44,5 +44,13 @@ class ChainApi {
 
     getBlock(id: number) {
         return this.client.get<Block>(`/chain/block/${id}`);
+    }
+}
+
+export class AccountApi {
+    constructor(private client: WarthogClient) {}
+
+    getBalance(address: string) {
+        return this.client.get<Balance>(`/account/${address}/balance`);
     }
 }
