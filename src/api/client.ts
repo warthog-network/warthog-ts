@@ -1,6 +1,12 @@
 import type { ApiResponse } from "./types/common";
 import { WarthogApiError } from "./types/common";
-import type { BlockIdHash, ChainHead, BlockHeader, Block } from "./types/chain";
+import type {
+    BlockIdHash,
+    ChainHead,
+    BlockHeader,
+    Block,
+    Transfer,
+} from "./types/chain";
 import type { Balance } from "./types/account";
 export interface WarthogClientOptions {
     nodeUrl: string;
@@ -11,11 +17,13 @@ export class WarthogClient {
 
     readonly chain: ChainApi;
     readonly account: AccountApi;
+    readonly transaction: TransactionApi;
 
     constructor(options: WarthogClientOptions) {
         this.nodeUrl = options.nodeUrl.replace(/\/+$/, "");
         this.chain = new ChainApi(this);
         this.account = new AccountApi(this);
+        this.transaction = new TransactionApi(this);
     }
 
     async get<T>(path: string): Promise<T> {
@@ -70,5 +78,13 @@ export class AccountApi {
 
     getBalance(address: string) {
         return this.client.get<Balance>(`/account/${address}/balance`);
+    }
+}
+
+export class TransactionApi {
+    constructor(private client: WarthogClient) {}
+
+    getMempool() {
+        return this.client.get<Transfer[]>(`/transaction/mempool`);
     }
 }
