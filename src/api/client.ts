@@ -8,6 +8,7 @@ import type {
     Transfer,
 } from "./types/chain";
 import type { Balance } from "./types/account";
+import type { MinFee, TransactionLookup } from "./types";
 export interface WarthogClientOptions {
     nodeUrl: string;
 }
@@ -86,5 +87,15 @@ export class TransactionApi {
 
     getMempool() {
         return this.client.get<Transfer[]>(`/transaction/mempool`);
+    }
+
+    getTransaction(hash: string) {
+        return this.client.get<TransactionLookup>(
+            `/transaction/lookup/${hash}`,
+        );
+    }
+
+    getMinFee() {
+        return this.client.get<MinFee>("/transaction/minfee");
     }
 }
