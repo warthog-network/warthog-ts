@@ -10,15 +10,33 @@ export class WarthogClient {
     private readonly nodeUrl: string;
 
     readonly chain: ChainApi;
+    readonly account: AccountApi;
 
     constructor(options: WarthogClientOptions) {
         this.nodeUrl = options.nodeUrl.replace(/\/+$/, "");
         this.chain = new ChainApi(this);
+        this.account = new AccountApi(this);
     }
 
     async get<T>(path: string): Promise<T> {
         const url = `${this.nodeUrl}${path}`;
         const res = await fetch(url);
+        const json = (await res.json()) as ApiResponse<T>;
+        if (!res.ok) {
+            throw new WarthogApiError(json.code, path);
+        }
+        return json.data;
+    }
+
+    async post<T>(path: string, body: any): Promise<T> {
+        const url = `${this.nodeUrl}${path}`;
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+        });
         const json = (await res.json()) as ApiResponse<T>;
         if (!res.ok) {
             throw new WarthogApiError(json.code, path);
