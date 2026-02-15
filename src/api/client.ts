@@ -1,6 +1,6 @@
 import type { ApiResponse } from "./types/common";
 import { WarthogApiError } from "./types/common";
-import type { ChainHead } from "./types/chain";
+import type { BlockIdHash, ChainHead, BlockHeader, Block } from "./types/chain";
 
 export interface WarthogClientOptions {
     nodeUrl: string;
@@ -32,5 +32,17 @@ class ChainApi {
 
     getHead() {
         return this.client.get<ChainHead>("/chain/head");
+    }
+
+    getHashId(id: number) {
+        return this.client.get<BlockIdHash>(`/chain/block/${id}/hash`);
+    }
+
+    getHeader(id: number) {
+        return this.client.get<BlockHeader>(`/chain/block/${id}/header`);
+    }
+
+    getBlock(id: number) {
+        return this.client.get<Block>(`/chain/block/${id}`);
     }
 }
