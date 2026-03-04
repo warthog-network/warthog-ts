@@ -23,7 +23,11 @@
     },
     "devDependencies": {
         "@types/bun": "latest",
+        "@types/elliptic": "^6.4.18",
         "typescript": "^5"
     },
-    "peerDependencies": {}
+    "peerDependencies": {},
+    "dependencies": {
+        "elliptic": "^6.6.1"
+    }
 }
