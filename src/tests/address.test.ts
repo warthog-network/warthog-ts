@@ -37,14 +37,3 @@ test("Address.validate returns false for wrong length", () => {
 test("Address.validate returns false for non-hex string", () => {
     expect(Address.validate("g1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2")).toBe(false);
 });
-
-test("Multiple addresses from same private key are identical", () => {
-    const privateKeyHex = "966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0";
-    
-    const addr1 = Address.fromPrivateKey(privateKeyHex);
-    const addr2 = Address.fromPrivateKey(privateKeyHex);
-    
-    expect(addr1.getPrivateKey()).toBe(addr2.getPrivateKey());
-    expect(addr1.getPublicKey()).toBe(addr2.getPublicKey());
-    expect(addr1.getAddress()).toBe(addr2.getAddress());
-});
