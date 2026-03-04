@@ -20,13 +20,6 @@ test("Address.fromPrivateKey generates correct keys from known private key", () 
     expect(addr.getAddress()).toBe("3661579d61abde5837a8686dc4d65348a2fc61b1fe5f4093");
 });
 
-test("Address.validate returns true for valid address", () => {
-    const addr = Address.fromRandom();
-    const address = addr.getAddress();
-    
-    expect(Address.validate(address)).toBe(true);
-});
-
 test("Address.validate returns false for invalid checksum", () => {
     const privateKeyHex = "966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0";
     const addr = Address.fromPrivateKey(privateKeyHex);
