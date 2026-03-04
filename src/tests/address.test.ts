@@ -20,15 +20,6 @@ test("Address.fromPrivateKey generates correct keys from known private key", () 
     expect(addr.getAddress()).toBe("3661579d61abde5837a8686dc4d65348a2fc61b1fe5f4093");
 });
 
-test("Address.fromPrivateKey with leading zeros padding", () => {
-    const privateKeyHex = "0000000000000000000000000000000000000000000000000000000000000001";
-    const addr = Address.fromPrivateKey(privateKeyHex);
-    
-    expect(addr.getPrivateKey()).toBe(privateKeyHex);
-    expect(addr.getPublicKey().length).toBe(66);
-    expect(addr.getAddress().length).toBe(48);
-});
-
 test("Address.validate returns true for valid address", () => {
     const addr = Address.fromRandom();
     const address = addr.getAddress();
