@@ -37,9 +37,10 @@ test("Address.validate returns true for valid address", () => {
 });
 
 test("Address.validate returns false for invalid checksum", () => {
-    const addr = Address.fromRandom();
+    const privateKeyHex = "966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0";
+    const addr = Address.fromPrivateKey(privateKeyHex);
     const address = addr.getAddress();
-    const invalidAddress = address.slice(0, -2) + "ff";
+    const invalidAddress = address.slice(0, -8) + "00000000";
     
     expect(Address.validate(invalidAddress)).toBe(false);
 });
