@@ -1,7 +1,9 @@
-import { ec as EC } from "elliptic";
-import { createHash } from "crypto";
+import type { ec } from "elliptic";
+import pkg from "elliptic";
+import { ethers } from "ethers";
 
-const ec = new EC("secp256k1");
+const { ec: EC } = pkg;
+const ecInstance = new EC("secp256k1");
 
 export class Address {
     private privateKeyHex: string;
@@ -15,16 +17,16 @@ export class Address {
     }
 
     public static fromRandom(): Address {
-        const keyPair = ec.genKeyPair();
+        const keyPair = ecInstance.genKeyPair();
         return Address.fromKeyPair(keyPair);
     }
 
     public static fromPrivateKeyHex(hex: string): Address {
-        const keyPair = ec.keyFromPrivate(hex, "hex");
+        const keyPair = ecInstance.keyFromPrivate(hex, "hex");
         return Address.fromKeyPair(keyPair);
     }
 
-    private static fromKeyPair(keyPair: EC.KeyPair): Address {
+    private static fromKeyPair(keyPair: ec.KeyPair): Address {
         let privateKeyHex = keyPair.getPrivate().toString("hex");
         while (privateKeyHex.length < 64) {
             privateKeyHex = "0" + privateKeyHex;
@@ -33,10 +35,12 @@ export class Address {
         const publicKeyHex = keyPair.getPublic().encodeCompressed("hex");
 
         const publicKeyBuffer = Buffer.from(publicKeyHex, "hex");
-        const sha256Hash = createHash("sha256").update(publicKeyBuffer).digest();
-        const ripemd160Hash = createHash("ripemd160").update(sha256Hash).digest();
-
-        const checksum = createHash("sha256").update(ripemd160Hash).digest().slice(0, 4);
+        const sha256Hex = ethers.sha256(publicKeyBuffer);
+        const sha256Hash = Buffer.from(sha256Hex.slice(2), "hex");
+        const ripemd160Hex = ethers.ripemd160(sha256Hash);
+        const ripemd160Hash = Buffer.from(ripemd160Hex.slice(2), "hex");
+        const checksumHex = ethers.sha256(ripemd160Hash);
+        const checksum = Buffer.from(checksumHex.slice(2), "hex").slice(0, 4);
         const addressBuffer = Buffer.concat([ripemd160Hash, checksum]);
         const addressHex = addressBuffer.toString("hex");
 
@@ -68,7 +72,8 @@ export class Address {
         const payload = addressBuffer.slice(0, 20);
         const checksum = addressBuffer.slice(20, 24);
 
-        const expectedChecksum = createHash("sha256").update(payload).digest().slice(0, 4);
+        const expectedChecksumHex = ethers.sha256(payload);
+        const expectedChecksum = Buffer.from(expectedChecksumHex.slice(2), "hex").slice(0, 4);
 
         return checksum.equals(expectedChecksum);
     }
