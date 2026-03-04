@@ -19,7 +19,7 @@ export class Address {
         return Address.fromKeyPair(keyPair);
     }
 
-    public static fromPrivateKey(hex: string): Address {
+    public static fromPrivateKeyHex(hex: string): Address {
         const keyPair = ec.keyFromPrivate(hex, "hex");
         return Address.fromKeyPair(keyPair);
     }
@@ -43,11 +43,11 @@ export class Address {
         return new Address(privateKeyHex, publicKeyHex, addressHex);
     }
 
-    public getPrivateKey(): string {
+    public getPrivateKeyHex(): string {
         return this.privateKeyHex;
     }
 
-    public getPublicKey(): string {
+    public getPublicKeyHex(): string {
         return this.publicKeyHex;
     }
 
