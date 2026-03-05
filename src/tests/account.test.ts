@@ -8,7 +8,7 @@ test("Account.fromRandom generates valid address", () => {
     expect(addr.getPublicKeyHex().length).toBe(66);
     expect(addr.getAddress().length).toBe(48);
     
-    expect(Account.validate_address(addr.getAddress())).toBe(true);
+    expect(Account.validateAddress(addr.getAddress())).toBe(true);
 });
 
 test("Account.fromPrivateKeyHex generates correct keys from known private key", () => {
@@ -20,20 +20,20 @@ test("Account.fromPrivateKeyHex generates correct keys from known private key", 
     expect(addr.getAddress()).toBe("3661579d61abde5837a8686dc4d65348a2fc61b1fe5f4093");
 });
 
-test("Account.validate_address returns false for invalid checksum", () => {
+test("Account.validateAddress returns false for invalid checksum", () => {
     const privateKeyHex = "966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0";
     const addr = Account.fromPrivateKeyHex(privateKeyHex);
     const address = addr.getAddress();
     const invalidAddress = address.slice(0, -8) + "00000000";
     
-    expect(Account.validate_address(invalidAddress)).toBe(false);
+    expect(Account.validateAddress(invalidAddress)).toBe(false);
 });
 
 test("Account.validate returns false for wrong length", () => {
-    expect(Account.validate_address("abc123")).toBe(false);
-    expect(Account.validate_address("a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9")).toBe(false);
+    expect(Account.validateAddress("abc123")).toBe(false);
+    expect(Account.validateAddress("a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9")).toBe(false);
 });
 
-test("Account.validate_address returns false for non-hex string", () => {
-    expect(Account.validate_address("g1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2")).toBe(false);
+test("Account.validateAddress returns false for non-hex string", () => {
+    expect(Account.validateAddress("g1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2")).toBe(false);
 });

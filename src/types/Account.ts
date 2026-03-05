@@ -59,7 +59,7 @@ export class Account {
         return this.addressHex;
     }
 
-    public static validate_address(address: string): boolean {
+    public static validateAddress(address: string): boolean {
         if (address.length !== 48) {
             return false;
         }
