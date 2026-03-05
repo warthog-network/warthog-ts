@@ -1,3 +1,4 @@
+import { TransactionContext } from './TransactionContext';
 import type { TransactionJson } from './TransactionContext';
 
 export const KNOWN_NODES = [
@@ -54,13 +55,23 @@ export class WarthogApi {
             url += `?${params.toString()}`;
         }
 
+        const replacer = (_key: string, value: unknown): unknown => {
+            if (typeof value === 'bigint') {
+                return Number(value);
+            }
+            return value;
+        };
+
+        const body = options?.body ? JSON.stringify(options.body, replacer) : undefined;
+
         const response = await fetch(url, {
             method: options?.method || 'GET',
             headers: { 'Content-Type': 'application/json' },
-            body: options?.body ? JSON.stringify(options.body) : undefined,
+            body,
         });
 
-        const json = await response.json() as { code: number; data?: T; error?: string };
+        const text = await response.text();
+        const json = JSON.parse(text) as { code: number; data?: T; error?: string };
 
         if (json.code !== 0) {
             return {
@@ -82,5 +93,14 @@ export class WarthogApi {
             method: 'POST',
             body: tx,
         });
+    }
+
+    async createTransactionContext(feeE8: bigint, nonceId: number): Promise<TransactionContext> {
+        const headResult = await this.getChainHead();
+        if (!headResult.success) {
+            throw new Error(headResult.error);
+        }
+        const { pinHash, pinHeight } = headResult.data;
+        return new TransactionContext({ pinHash, pinHeight }, feeE8, nonceId);
     }
 }

@@ -9,7 +9,9 @@ export interface ChainPin {
     pinHeight: number;
 }
 
-export type TransactionJson = Record<string, unknown>;
+export interface TransactionJson extends Record<string, unknown> {
+    type: string;
+}
 
 export class TransactionContext {
     constructor(

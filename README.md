@@ -57,11 +57,18 @@ bun run build
 Run examples with bun:
 
 ```bash
-bun run examples/generate-address.ts
+bun run examples/transactions.ts
 ```
 
 ### Available Examples
 
-- `examples/generate-address.ts` - Generate a new wallet or load from private key
+- `examples/transactions.ts` - Generate wallet and send all transaction types:
+  - WART Transfer
+  - Token Transfer
+  - Limit Swap
+  - Liquidity Deposit
+  - Liquidity Withdrawal
+  - Cancelation
+  - Asset Creation
 
 This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
