@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { Address } from "./Address";
+import { Account } from "./Account";
 
 export class HDWallet {
   private rootNode: ethers.HDNodeWallet;
@@ -17,13 +17,13 @@ export class HDWallet {
     return new HDWallet(rootNode);
   }
 
-  public deriveAddressAtIndex(index: number): Address {
-    return this.deriveAddressFromPath(`0/${index}`);
+  public deriveAccountAtIndex(index: number): Account {
+    return this.deriveAccountFromPath(`0/${index}`);
   }
 
-  public deriveAddressFromPath(path: string): Address {
+  public deriveAccountFromPath(path: string): Account {
     const childNode = this.rootNode.derivePath(path);
     const privateKeyHex = childNode.privateKey.slice(2);
-    return Address.fromPrivateKeyHex(privateKeyHex);
+    return Account.fromPrivateKeyHex(privateKeyHex);
   }
 }

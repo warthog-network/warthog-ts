@@ -5,7 +5,7 @@ import { ethers } from "ethers";
 const { ec: EC } = pkg;
 const ecInstance = new EC("secp256k1");
 
-export class Address {
+export class Account {
     private privateKeyHex: string;
     private publicKeyHex: string;
     private addressHex: string;
@@ -16,17 +16,17 @@ export class Address {
         this.addressHex = addressHex;
     }
 
-    public static fromRandom(): Address {
+    public static fromRandom(): Account {
         const keyPair = ecInstance.genKeyPair();
-        return Address.fromKeyPair(keyPair);
+        return Account.fromKeyPair(keyPair);
     }
 
-    public static fromPrivateKeyHex(hex: string): Address {
+    public static fromPrivateKeyHex(hex: string): Account {
         const keyPair = ecInstance.keyFromPrivate(hex, "hex");
-        return Address.fromKeyPair(keyPair);
+        return Account.fromKeyPair(keyPair);
     }
 
-    private static fromKeyPair(keyPair: ec.KeyPair): Address {
+    private static fromKeyPair(keyPair: ec.KeyPair): Account {
         let privateKeyHex = keyPair.getPrivate().toString("hex");
         while (privateKeyHex.length < 64) {
             privateKeyHex = "0" + privateKeyHex;
@@ -44,7 +44,7 @@ export class Address {
         const addressBuffer = Buffer.concat([ripemd160Hash, checksum]);
         const addressHex = addressBuffer.toString("hex");
 
-        return new Address(privateKeyHex, publicKeyHex, addressHex);
+        return new Account(privateKeyHex, publicKeyHex, addressHex);
     }
 
     public getPrivateKeyHex(): string {
@@ -59,7 +59,7 @@ export class Address {
         return this.addressHex;
     }
 
-    public static validate(address: string): boolean {
+    public static validate_address(address: string): boolean {
         if (address.length !== 48) {
             return false;
         }

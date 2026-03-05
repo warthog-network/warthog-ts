@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { HDWallet } from "../types/HDWallet";
-import { Address } from "../types/Address";
+import { Account } from "../types/Account";
 
 test("HDWallet.fromMnemonic creates valid instance", () => {
   const mnemonic =
@@ -10,25 +10,25 @@ test("HDWallet.fromMnemonic creates valid instance", () => {
   expect(wallet).not.toBeNull();
 });
 
-test("HDWallet.deriveAddressAtIndex returns valid Address", () => {
+test("HDWallet.deriveAccountAtIndex returns valid Account", () => {
   const mnemonic =
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
   const wallet = HDWallet.fromMnemonic(mnemonic);
-  const address = wallet.deriveAddressAtIndex(0);
+  const account = wallet.deriveAccountAtIndex(0);
 
-  expect(address.getAddress().length).toBe(48);
-  expect(address.getPrivateKeyHex().length).toBe(64);
+  expect(account.getAddress().length).toBe(48);
+  expect(account.getPrivateKeyHex().length).toBe(64);
 });
 
-test("HDWallet.deriveAddressAtIndex(0) != deriveAddress(1)", () => {
+test("HDWallet.deriveAccountAtIndex(0) != deriveAccount(1)", () => {
   const mnemonic =
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
   const wallet = HDWallet.fromMnemonic(mnemonic);
 
-  const address0 = wallet.deriveAddressAtIndex(0);
-  const address1 = wallet.deriveAddressAtIndex(1);
+  const account0 = wallet.deriveAccountAtIndex(0);
+  const account1 = wallet.deriveAccountAtIndex(1);
 
-  expect(address0.getAddress()).not.toBe(address1.getAddress());
+  expect(account0.getAddress()).not.toBe(account1.getAddress());
 });
 
 test("HDWallet full path derivation matches index method", () => {
@@ -36,17 +36,17 @@ test("HDWallet full path derivation matches index method", () => {
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
   const wallet = HDWallet.fromMnemonic(mnemonic);
 
-  const addressFromIndex = wallet.deriveAddressAtIndex(0);
-  const addressFromPath = wallet.deriveAddressFromPath("0/0");
+  const accountFromIndex = wallet.deriveAccountAtIndex(0);
+  const accountFromPath = wallet.deriveAccountFromPath("0/0");
 
-  expect(addressFromIndex.getAddress()).toBe(addressFromPath.getAddress());
+  expect(accountFromIndex.getAddress()).toBe(accountFromPath.getAddress());
 });
 
-test("HDWallet deriveAddressAtIndex validates address checksum", () => {
+test("HDWallet deriveAccountAtIndex validates account checksum", () => {
   const mnemonic =
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
   const wallet = HDWallet.fromMnemonic(mnemonic);
-  const address = wallet.deriveAddressAtIndex(0);
+  const account = wallet.deriveAccountAtIndex(0);
 
-  expect(Address.validate(address.getAddress())).toBe(true);
+  expect(Account.validate_address(account.getAddress())).toBe(true);
 });
