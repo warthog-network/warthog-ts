@@ -3,6 +3,11 @@ import { createHash } from 'crypto';
 const UINT32_BE_BYTES = 4;
 const UINT64_BE_BYTES = 8;
 
+export interface ChainPin {
+    pinHash: string;
+    pinHeight: number;
+}
+
 function uint32BE(value: number): Buffer {
     const buf = Buffer.alloc(UINT32_BE_BYTES);
     buf.writeUInt32BE(value, 0);
@@ -31,16 +36,15 @@ export class TransactionBytes {
     }
 
     static wartTransfer(
-        pinHash: string,
-        pinHeight: number,
+        chainPin: ChainPin,
         nonceId: number,
         feeE8: bigint,
         toAddr: string,
         wartE8: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(pinHash),
-            uint32BE(pinHeight),
+            hashToBytes(chainPin.pinHash),
+            uint32BE(chainPin.pinHeight),
             uint32BE(nonceId),
             Buffer.alloc(3),
             uint64BE(feeE8),
@@ -51,8 +55,7 @@ export class TransactionBytes {
     }
 
     static tokenTransfer(
-        pinHash: string,
-        pinHeight: number,
+        chainPin: ChainPin,
         nonceId: number,
         feeE8: bigint,
         assetHash: string,
@@ -61,8 +64,8 @@ export class TransactionBytes {
         amountU64: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(pinHash),
-            uint32BE(pinHeight),
+            hashToBytes(chainPin.pinHash),
+            uint32BE(chainPin.pinHeight),
             uint32BE(nonceId),
             Buffer.alloc(3),
             uint64BE(feeE8),
@@ -75,8 +78,7 @@ export class TransactionBytes {
     }
 
     static limitSwap(
-        pinHash: string,
-        pinHeight: number,
+        chainPin: ChainPin,
         nonceId: number,
         feeE8: bigint,
         assetHash: string,
@@ -85,8 +87,8 @@ export class TransactionBytes {
         limit: string
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(pinHash),
-            uint32BE(pinHeight),
+            hashToBytes(chainPin.pinHash),
+            uint32BE(chainPin.pinHeight),
             uint32BE(nonceId),
             Buffer.alloc(3),
             uint64BE(feeE8),
@@ -99,8 +101,7 @@ export class TransactionBytes {
     }
 
     static liquidityDeposit(
-        pinHash: string,
-        pinHeight: number,
+        chainPin: ChainPin,
         nonceId: number,
         feeE8: bigint,
         assetHash: string,
@@ -108,8 +109,8 @@ export class TransactionBytes {
         wartE8: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(pinHash),
-            uint32BE(pinHeight),
+            hashToBytes(chainPin.pinHash),
+            uint32BE(chainPin.pinHeight),
             uint32BE(nonceId),
             Buffer.alloc(3),
             uint64BE(feeE8),
@@ -121,16 +122,15 @@ export class TransactionBytes {
     }
 
     static liquidityWithdrawal(
-        pinHash: string,
-        pinHeight: number,
+        chainPin: ChainPin,
         nonceId: number,
         feeE8: bigint,
         assetHash: string,
         amountE8: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(pinHash),
-            uint32BE(pinHeight),
+            hashToBytes(chainPin.pinHash),
+            uint32BE(chainPin.pinHeight),
             uint32BE(nonceId),
             Buffer.alloc(3),
             uint64BE(feeE8),
@@ -141,16 +141,15 @@ export class TransactionBytes {
     }
 
     static cancelation(
-        pinHash: string,
-        pinHeight: number,
+        chainPin: ChainPin,
         nonceId: number,
         feeE8: bigint,
         cancelHeight: number,
         cancelNonceId: number
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(pinHash),
-            uint32BE(pinHeight),
+            hashToBytes(chainPin.pinHash),
+            uint32BE(chainPin.pinHeight),
             uint32BE(nonceId),
             Buffer.alloc(3),
             uint64BE(feeE8),
@@ -161,8 +160,7 @@ export class TransactionBytes {
     }
 
     static assetCreation(
-        pinHash: string,
-        pinHeight: number,
+        chainPin: ChainPin,
         nonceId: number,
         feeE8: bigint,
         supplyU64: bigint,
@@ -172,8 +170,8 @@ export class TransactionBytes {
         const nameBuffer = Buffer.alloc(5);
         nameBuffer.write(name, 'ascii');
         const binary = Buffer.concat([
-            hashToBytes(pinHash),
-            uint32BE(pinHeight),
+            hashToBytes(chainPin.pinHash),
+            uint32BE(chainPin.pinHeight),
             uint32BE(nonceId),
             Buffer.alloc(3),
             uint64BE(feeE8),
