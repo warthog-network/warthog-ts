@@ -1,9 +1,17 @@
 import type { ec } from "elliptic";
 import pkg from "elliptic";
 import { ethers } from "ethers";
+import { TransactionBytes } from "./TransactionBytes";
 
 const { ec: EC } = pkg;
 const ecInstance = new EC("secp256k1");
+
+export interface Signature65 {
+    r: string;
+    s: string;
+    recid: number;
+    signature: string;
+}
 
 export class Account {
     private privateKeyHex: string;
@@ -76,5 +84,27 @@ export class Account {
         const expectedChecksum = Buffer.from(expectedChecksumHex.slice(2), "hex").slice(0, 4);
 
         return checksum.equals(expectedChecksum);
+    }
+
+    /**
+     * Sign a Warthog transaction
+     * @param transaction - TransactionBytes to sign
+     * @returns 65-byte signature (r + s + recid)
+     */
+    public sign(transaction: TransactionBytes): Signature65 {
+        const txHash = transaction.hash();
+        const keyPair = ecInstance.keyFromPrivate(this.privateKeyHex, "hex");
+        const signature = ecInstance.sign(Buffer.from(txHash, "hex"), keyPair, { canonical: true });
+
+        const r = signature.r.toString(16).padStart(64, "0");
+        const s = signature.s.toString(16).padStart(64, "0");
+        const recid = signature.recoveryParam ?? 0;
+
+        return {
+            r,
+            s,
+            recid,
+            signature: r + s + recid.toString(16).padStart(2, "0"),
+        };
     }
 }
