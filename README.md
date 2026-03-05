@@ -52,4 +52,16 @@ To build:
 bun run build
 ```
 
+## Examples
+
+Run examples with bun:
+
+```bash
+bun run examples/generate-address.ts
+```
+
+### Available Examples
+
+- `examples/generate-address.ts` - Generate a new wallet or load from private key
+
 This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
