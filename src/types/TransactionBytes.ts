@@ -8,6 +8,14 @@ export interface ChainPin {
     pinHeight: number;
 }
 
+export class TransactionContext {
+    constructor(
+        public readonly chainPin: ChainPin,
+        public readonly feeE8: bigint,
+        public readonly nonceId: number
+    ) {}
+}
+
 function uint32BE(value: number): Buffer {
     const buf = Buffer.alloc(UINT32_BE_BYTES);
     buf.writeUInt32BE(value, 0);
@@ -36,18 +44,16 @@ export class TransactionBytes {
     }
 
     static wartTransfer(
-        chainPin: ChainPin,
-        nonceId: number,
-        feeE8: bigint,
+        context: TransactionContext,
         toAddr: string,
         wartE8: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(chainPin.pinHash),
-            uint32BE(chainPin.pinHeight),
-            uint32BE(nonceId),
+            hashToBytes(context.chainPin.pinHash),
+            uint32BE(context.chainPin.pinHeight),
+            uint32BE(context.nonceId),
             Buffer.alloc(3),
-            uint64BE(feeE8),
+            uint64BE(context.feeE8),
             addressToBytes(toAddr),
             uint64BE(wartE8),
         ]);
@@ -55,20 +61,18 @@ export class TransactionBytes {
     }
 
     static tokenTransfer(
-        chainPin: ChainPin,
-        nonceId: number,
-        feeE8: bigint,
+        context: TransactionContext,
         assetHash: string,
         isLiquidity: boolean,
         toAddr: string,
         amountU64: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(chainPin.pinHash),
-            uint32BE(chainPin.pinHeight),
-            uint32BE(nonceId),
+            hashToBytes(context.chainPin.pinHash),
+            uint32BE(context.chainPin.pinHeight),
+            uint32BE(context.nonceId),
             Buffer.alloc(3),
-            uint64BE(feeE8),
+            uint64BE(context.feeE8),
             hashToBytes(assetHash),
             Buffer.from([isLiquidity ? 1 : 0]),
             addressToBytes(toAddr),
@@ -78,20 +82,18 @@ export class TransactionBytes {
     }
 
     static limitSwap(
-        chainPin: ChainPin,
-        nonceId: number,
-        feeE8: bigint,
+        context: TransactionContext,
         assetHash: string,
         isBuy: boolean,
         amountU64: bigint,
         limit: string
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(chainPin.pinHash),
-            uint32BE(chainPin.pinHeight),
-            uint32BE(nonceId),
+            hashToBytes(context.chainPin.pinHash),
+            uint32BE(context.chainPin.pinHeight),
+            uint32BE(context.nonceId),
             Buffer.alloc(3),
-            uint64BE(feeE8),
+            uint64BE(context.feeE8),
             hashToBytes(assetHash),
             Buffer.from([isBuy ? 1 : 0]),
             uint64BE(amountU64),
@@ -101,19 +103,17 @@ export class TransactionBytes {
     }
 
     static liquidityDeposit(
-        chainPin: ChainPin,
-        nonceId: number,
-        feeE8: bigint,
+        context: TransactionContext,
         assetHash: string,
         amountU64: bigint,
         wartE8: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(chainPin.pinHash),
-            uint32BE(chainPin.pinHeight),
-            uint32BE(nonceId),
+            hashToBytes(context.chainPin.pinHash),
+            uint32BE(context.chainPin.pinHeight),
+            uint32BE(context.nonceId),
             Buffer.alloc(3),
-            uint64BE(feeE8),
+            uint64BE(context.feeE8),
             hashToBytes(assetHash),
             uint64BE(amountU64),
             uint64BE(wartE8),
@@ -122,18 +122,16 @@ export class TransactionBytes {
     }
 
     static liquidityWithdrawal(
-        chainPin: ChainPin,
-        nonceId: number,
-        feeE8: bigint,
+        context: TransactionContext,
         assetHash: string,
         amountE8: bigint
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(chainPin.pinHash),
-            uint32BE(chainPin.pinHeight),
-            uint32BE(nonceId),
+            hashToBytes(context.chainPin.pinHash),
+            uint32BE(context.chainPin.pinHeight),
+            uint32BE(context.nonceId),
             Buffer.alloc(3),
-            uint64BE(feeE8),
+            uint64BE(context.feeE8),
             hashToBytes(assetHash),
             uint64BE(amountE8),
         ]);
@@ -141,18 +139,16 @@ export class TransactionBytes {
     }
 
     static cancelation(
-        chainPin: ChainPin,
-        nonceId: number,
-        feeE8: bigint,
+        context: TransactionContext,
         cancelHeight: number,
         cancelNonceId: number
     ): TransactionBytes {
         const binary = Buffer.concat([
-            hashToBytes(chainPin.pinHash),
-            uint32BE(chainPin.pinHeight),
-            uint32BE(nonceId),
+            hashToBytes(context.chainPin.pinHash),
+            uint32BE(context.chainPin.pinHeight),
+            uint32BE(context.nonceId),
             Buffer.alloc(3),
-            uint64BE(feeE8),
+            uint64BE(context.feeE8),
             uint32BE(cancelHeight),
             uint32BE(cancelNonceId),
         ]);
@@ -160,9 +156,7 @@ export class TransactionBytes {
     }
 
     static assetCreation(
-        chainPin: ChainPin,
-        nonceId: number,
-        feeE8: bigint,
+        context: TransactionContext,
         supplyU64: bigint,
         precision: number,
         name: string
@@ -170,11 +164,11 @@ export class TransactionBytes {
         const nameBuffer = Buffer.alloc(5);
         nameBuffer.write(name, 'ascii');
         const binary = Buffer.concat([
-            hashToBytes(chainPin.pinHash),
-            uint32BE(chainPin.pinHeight),
-            uint32BE(nonceId),
+            hashToBytes(context.chainPin.pinHash),
+            uint32BE(context.chainPin.pinHeight),
+            uint32BE(context.nonceId),
             Buffer.alloc(3),
-            uint64BE(feeE8),
+            uint64BE(context.feeE8),
             uint64BE(supplyU64),
             Buffer.from([precision]),
             nameBuffer,
