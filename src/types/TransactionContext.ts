@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { Account } from './Account';
 
 const UINT32_BE_BYTES = 4;
 const UINT64_BE_BYTES = 8;
@@ -8,6 +9,8 @@ export interface ChainPin {
     pinHeight: number;
 }
 
+export type TransactionJson = Record<string, unknown>;
+
 export class TransactionContext {
     constructor(
         public readonly chainPin: ChainPin,
@@ -15,7 +18,7 @@ export class TransactionContext {
         public readonly nonceId: number
     ) {}
 
-    wartTransfer(toAddr: string, wartE8: bigint): TransactionBytes {
+    wartTransfer(account: Account, toAddr: string, wartE8: bigint): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -25,15 +28,27 @@ export class TransactionContext {
             addressToBytes(toAddr),
             uint64BE(wartE8),
         ]);
-        return createTransactionBytes(binary);
+        const hash = createHash('sha256').update(binary).digest('hex');
+        const sig = account.sign(hash);
+
+        return {
+            type: 'wartTransfer',
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId,
+            feeE8: this.feeE8,
+            toAddr,
+            wartE8,
+            signature65: sig.signature,
+        };
     }
 
     tokenTransfer(
+        account: Account,
         assetHash: string,
         isLiquidity: boolean,
         toAddr: string,
         amountU64: bigint
-    ): TransactionBytes {
+    ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -45,15 +60,29 @@ export class TransactionContext {
             addressToBytes(toAddr),
             uint64BE(amountU64),
         ]);
-        return createTransactionBytes(binary);
+        const hash = createHash('sha256').update(binary).digest('hex');
+        const sig = account.sign(hash);
+
+        return {
+            type: 'tokenTransfer',
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId,
+            feeE8: this.feeE8,
+            assetHash,
+            isLiquidity,
+            toAddr,
+            amountU64,
+            signature65: sig.signature,
+        };
     }
 
     limitSwap(
+        account: Account,
         assetHash: string,
         isBuy: boolean,
         amountU64: bigint,
         limit: string
-    ): TransactionBytes {
+    ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -65,14 +94,28 @@ export class TransactionContext {
             uint64BE(amountU64),
             Buffer.from(limit, 'hex'),
         ]);
-        return createTransactionBytes(binary);
+        const hash = createHash('sha256').update(binary).digest('hex');
+        const sig = account.sign(hash);
+
+        return {
+            type: 'limitSwap',
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId,
+            feeE8: this.feeE8,
+            assetHash,
+            isBuy,
+            amountU64,
+            limit,
+            signature65: sig.signature,
+        };
     }
 
     liquidityDeposit(
+        account: Account,
         assetHash: string,
         amountU64: bigint,
         wartE8: bigint
-    ): TransactionBytes {
+    ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -83,13 +126,26 @@ export class TransactionContext {
             uint64BE(amountU64),
             uint64BE(wartE8),
         ]);
-        return createTransactionBytes(binary);
+        const hash = createHash('sha256').update(binary).digest('hex');
+        const sig = account.sign(hash);
+
+        return {
+            type: 'liquidityDeposit',
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId,
+            feeE8: this.feeE8,
+            assetHash,
+            amountU64,
+            wartE8,
+            signature65: sig.signature,
+        };
     }
 
     liquidityWithdrawal(
+        account: Account,
         assetHash: string,
         amountE8: bigint
-    ): TransactionBytes {
+    ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -99,13 +155,25 @@ export class TransactionContext {
             hashToBytes(assetHash),
             uint64BE(amountE8),
         ]);
-        return createTransactionBytes(binary);
+        const hash = createHash('sha256').update(binary).digest('hex');
+        const sig = account.sign(hash);
+
+        return {
+            type: 'liquidityWithdrawal',
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId,
+            feeE8: this.feeE8,
+            assetHash,
+            amountE8,
+            signature65: sig.signature,
+        };
     }
 
     cancelation(
+        account: Account,
         cancelHeight: number,
         cancelNonceId: number
-    ): TransactionBytes {
+    ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -115,14 +183,26 @@ export class TransactionContext {
             uint32BE(cancelHeight),
             uint32BE(cancelNonceId),
         ]);
-        return createTransactionBytes(binary);
+        const hash = createHash('sha256').update(binary).digest('hex');
+        const sig = account.sign(hash);
+
+        return {
+            type: 'cancelation',
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId,
+            feeE8: this.feeE8,
+            cancelHeight,
+            cancelNonceId,
+            signature65: sig.signature,
+        };
     }
 
     assetCreation(
+        account: Account,
         supplyU64: bigint,
         precision: number,
         name: string
-    ): TransactionBytes {
+    ): TransactionJson {
         const nameBuffer = Buffer.alloc(5);
         nameBuffer.write(name, 'ascii');
         const binary = Buffer.concat([
@@ -135,22 +215,20 @@ export class TransactionContext {
             Buffer.from([precision]),
             nameBuffer,
         ]);
-        return createTransactionBytes(binary);
+        const hash = createHash('sha256').update(binary).digest('hex');
+        const sig = account.sign(hash);
+
+        return {
+            type: 'assetCreation',
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId,
+            feeE8: this.feeE8,
+            supplyU64,
+            precision,
+            name,
+            signature65: sig.signature,
+        };
     }
-}
-
-export class TransactionBytes {
-    constructor(public readonly binary: Buffer) {}
-
-    hash(): string {
-        return createHash('sha256').update(this.binary).digest('hex');
-    }
-}
-
-const CREATE_KEY = Symbol('create');
-
-function createTransactionBytes(binary: Buffer): TransactionBytes {
-    return new TransactionBytes(binary);
 }
 
 function uint32BE(value: number): Buffer {

@@ -1,7 +1,6 @@
 import type { ec } from "elliptic";
 import pkg from "elliptic";
 import { ethers } from "ethers";
-import { TransactionBytes } from "./TransactionBytes";
 
 const { ec: EC } = pkg;
 const ecInstance = new EC("secp256k1");
@@ -87,14 +86,13 @@ export class Account {
     }
 
     /**
-     * Sign a Warthog transaction
-     * @param transaction - TransactionBytes to sign
+     * Sign a hash for Warthog transaction
+     * @param hash - 32-byte hex string to sign
      * @returns 65-byte signature (r + s + recid)
      */
-    public sign(transaction: TransactionBytes): Signature65 {
-        const txHash = transaction.hash();
+    public sign(hash: string): Signature65 {
         const keyPair = ecInstance.keyFromPrivate(this.privateKeyHex, "hex");
-        const signature = ecInstance.sign(Buffer.from(txHash, "hex"), keyPair, { canonical: true });
+        const signature = ecInstance.sign(Buffer.from(hash, "hex"), keyPair, { canonical: true });
 
         const r = signature.r.toString(16).padStart(64, "0");
         const s = signature.s.toString(16).padStart(64, "0");
