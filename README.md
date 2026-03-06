@@ -169,48 +169,62 @@ if (result.success) {
 ### Other Transaction Types
 
 ```typescript
-// Token Transfer
-context.tokenTransfer(
+// Asset Transfer
+context.transferAsset(
     account,
-    'asset-hash-hex',    // Token asset hash
-    false,               // isLiquidity
+    'asset-hash-hex',                                 // Asset hash
     recipient,
-    BigInt(1000)        // Amount in token units
+    Funds.parse('1000', new TokenPrecision(4))!       // Asset units
 );
 
-// Limit Swap
-context.limitSwap(
+// Liquidity Transfer (transfer liquidity pool tokens)
+context.transferLiquidity(
+    account,
+    'asset-hash-hex',                                 // Asset hash
+    recipient,
+    Liquidity.fromE8(100n)!                           // Liquidity units
+);
+
+// Buy (spend WART to buy tokens)
+context.buy(
     account,
     'asset-hash-hex',
-    true,                // isBuy
-    BigInt(100000000),   // Amount in E8
-    'c0e74d'            // Limit price in hex
+    Wart.fromE8(100000000n)!,                         // WART amount
+    price  // Price object
 );
 
-// Liquidity Deposit
-context.liquidityDeposit(
+// Sell (sell tokens for WART)
+context.sell(
     account,
     'asset-hash-hex',
-    BigInt(1000),        // Token amount
-    Wart.fromE8(100000000n)!  // WART amount
+    Funds.parse('1000', new TokenPrecision(4))!,      // Asset amount
+    price                                             // Price object
 );
 
-// Liquidity Withdrawal
-context.liquidityWithdrawal(
+// Deposit Liquidity
+context.depositLiquidity(
     account,
     'asset-hash-hex',
-    BigInt(100)          // Liquidity units
+    Funds.parse('1000', new TokenPrecision(4))!,      // Asset amount
+    Wart.fromE8(100000000n)!                          // WART amount
 );
 
-// Cancelation
-context.cancelation(account, cancelHeight, cancelNonceId);
-
-// Asset Creation
-context.assetCreation(
+// Withdraw Liquidity
+context.withdrawLiquidity(
     account,
-    BigInt(1000000000000),  // Total supply
-    4,                      // Precision (decimals)
-    'MYTOKEN'              // Token name
+    'asset-hash-hex',
+    Liquidity.fromE8(100n)!                           // Liquidity units
+);
+
+// Cancel Transaction
+context.cancelTransaction(account, cancelHeight, cancelNonceId);
+
+// Create Assets
+context.createAssets(
+    account,
+    Funds.parse('1000000', new TokenPrecision(10))!,  // Total supply
+    TokenPrecision.WART,                              // Precision
+    'MYTOKEN'                                         // Asset name
 );
 ```
 
