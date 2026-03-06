@@ -31,8 +31,12 @@ async function submit(txJson: TransactionJson) {
     }
 }
 
-async function sendWart() {
-    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+async function runExamples() {
+    // Create a single context and reuse it for all transactions
+    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.fromNumber(0)!);
+
+    // WART transfer
+    context.nonceId = NonceId.fromNumber(1)!;
     await submit(
         context.wartTransfer(
             existingAccount,
@@ -40,10 +44,9 @@ async function sendWart() {
             Wart.fromE8(100000000n)!
         )
     );
-}
 
-async function sendToken() {
-    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+    // Token transfer
+    context.nonceId = NonceId.fromNumber(2)!;
     await submit(
         context.tokenTransfer(
             existingAccount,
@@ -53,14 +56,13 @@ async function sendToken() {
             BigInt(1000)
         )
     );
-}
 
-async function limitSwap() {
-    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+    // Limit swap
+    context.nonceId = NonceId.fromNumber(3)!;
     // Note: The precision (4) must be obtained from the API's token information
     // for the asset being traded. Different tokens have different precisions.
     const price = Price.fromNumberPrecision(1.0, new TokenPrecision(4), false)!;
-    console.log('Price:', price, 'toHex:', price.toHex());
+    console.log('Price hex:', price.toHex());
     await submit(
         context.limitSwap(
             existingAccount,
@@ -70,10 +72,9 @@ async function limitSwap() {
             price
         )
     );
-}
 
-async function liquidityDeposit() {
-    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+    // Liquidity deposit
+    context.nonceId = NonceId.fromNumber(4)!;
     await submit(
         context.liquidityDeposit(
             existingAccount,
@@ -82,10 +83,9 @@ async function liquidityDeposit() {
             Wart.fromE8(100000000n)!
         )
     );
-}
 
-async function liquidityWithdrawal() {
-    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+    // Liquidity withdrawal
+    context.nonceId = NonceId.fromNumber(5)!;
     await submit(
         context.liquidityWithdrawal(
             existingAccount,
@@ -93,26 +93,18 @@ async function liquidityWithdrawal() {
             BigInt(100)
         )
     );
-}
 
-async function cancelTransaction() {
-    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+    // Cancelation
+    context.nonceId = NonceId.fromNumber(6)!;
     await submit(
         context.cancelation(existingAccount, 0, 1)
     );
-}
 
-async function createAsset() {
-    const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+    // Asset creation
+    context.nonceId = NonceId.fromNumber(7)!;
     await submit(
         context.assetCreation(existingAccount, BigInt(1000000000000), 4, 'TOK2')
     );
 }
 
-sendWart();
-sendToken();
-limitSwap();
-liquidityDeposit();
-liquidityWithdrawal();
-cancelTransaction();
-createAsset();
+runExamples();

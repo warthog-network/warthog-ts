@@ -23,18 +23,23 @@ export interface TransactionJson extends Record<string, unknown> {
 /**
  * Transaction builder for creating and signing Warthog transactions.
  * Obtained via WarthogApi.createTransactionContext().
+ *
+ * All properties (chainPin, fee, nonceId) can be modified. When reusing this
+ * context for multiple transactions, you MUST change the nonceId for each new
+ * transaction to prevent nonce collisions. The chainPin should typically remain
+ * unchanged unless you need to refresh it from the network.
  */
 export class TransactionContext {
     /**
      * Create a new transaction context.
-     * @param chainPin - Chain pin data from the network
-     * @param fee - Transaction fee
-     * @param nonceId - Unique nonce for the transaction
+     * @param chainPin - Chain pin data from the network (can be refreshed)
+     * @param fee - Transaction fee (can be modified for priority transactions)
+     * @param nonceId - Unique nonce (must be changed for each new transaction)
      */
     constructor(
-        public readonly chainPin: ChainPin,
-        public readonly fee: RoundedFee,
-        public readonly nonceId: NonceId
+        public chainPin: ChainPin,
+        public fee: RoundedFee,
+        public nonceId: NonceId
     ) {}
 
     /**
