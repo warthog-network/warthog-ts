@@ -1,24 +1,7 @@
 export const MAX_U64 = 0xffffffffffffffffn;
 
-// helper function not exported.
-function valueFrom(fd: ParsedFunds, precision: number): bigint | null {
-    if (fd.decimalPlaces > precision) {
-        return null;
-    }
 
-    const zeros = precision - fd.decimalPlaces;
-    let value = fd.val;
-
-    for (let i = 0; i < zeros; i++) {
-        if (MAX_U64 / 10n < value) {
-            return null;
-        }
-        value *= 10n;
-    }
-
-    return value;
-}
-
+// Class to represent Warthog's token precision
 export class TokenPrecision {
     constructor(public precision: number) {
         if (precision < 0 || precision > 18) {
@@ -27,6 +10,8 @@ export class TokenPrecision {
     }
 }
 
+// Class to represent a parsed string as a 64 bit integer with information about the
+// decimals
 export class ParsedFunds {
     val: bigint;
     decimalPlaces: number;
@@ -76,6 +61,25 @@ export class ParsedFunds {
     }
 }
 
+// Helper function used in Funds and Wart
+function valueFrom(fd: ParsedFunds, precision: number): bigint | null {
+    if (fd.decimalPlaces > precision) {
+        return null;
+    }
+
+    const zeros = precision - fd.decimalPlaces;
+    let value = fd.val;
+
+    for (let i = 0; i < zeros; i++) {
+        if (MAX_U64 / 10n < value) {
+            return null;
+        }
+        value *= 10n;
+    }
+
+    return value;
+}
+
 // Class to represent token amounts
 export class Funds {
     amount: bigint;
@@ -84,13 +88,19 @@ export class Funds {
         this.amount = amount;
     }
 
-    public static parse(fd: ParsedFunds, digits: TokenPrecision): Funds | null {
+    public static parse(string: string, digits: TokenPrecision): Funds | null {
+        const fd = ParsedFunds.parse(string);
+        if (fd === null) return null;
+        return Funds.fromParsedFunds(fd, digits);
+    }
+    public static fromParsedFunds(fd: ParsedFunds, digits: TokenPrecision): Funds | null {
         const value = valueFrom(fd, digits.precision);
         if (value === null) return null;
         return new Funds(value);
     }
 }
 
+// Class to represent Wart amounts
 export class Wart {
     amount: bigint;
 
@@ -98,7 +108,12 @@ export class Wart {
         this.amount = amount;
     }
 
-    public static parse(fd: ParsedFunds): Wart | null {
+    public static parse(string: string): Wart | null {
+        const fd = ParsedFunds.parse(string);
+        if (fd === null) return null;
+        return Wart.fromParsedFunds(fd);
+    }
+    public static fromParsedFunds(fd: ParsedFunds): Wart | null {
         const value = valueFrom(fd, 8);
         if (value === null) return null;
         return new Wart(value);
@@ -117,8 +132,9 @@ export class Wart {
     }
 }
 
+// Class to represent Warthog's internal fee representation in 16 bits
 export class CompactFee {
-    constructor(public exponent: number, public mantissa: number) {}
+    private constructor(public exponent: number, public mantissa: number) {}
     public static fromWart(wart: Wart, ceil: boolean): CompactFee {
         if (wart.amount === 0n){
             // ignore ceil and return smallest fee which corresponds to
@@ -149,7 +165,7 @@ export class CompactFee {
             e -= 1;
             e8 <<= 1n;
         }
-        return new CompactFee(e, Number(e8));
+        return new CompactFee(e, Number(e8 - 0x0400n));
     }
     public toWart(): Wart {
         if (this.exponent < 10) {

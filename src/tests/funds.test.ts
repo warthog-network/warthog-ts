@@ -1,160 +1,171 @@
 import { test, expect } from "bun:test";
-import { Funds, ParsedFunds, TokenPrecision } from "../types/Funds";
+import { Funds, ParsedFunds, TokenPrecision, Wart, CompactFee } from "../types/Funds";
 
-test("ParsedFunds parses 1.123 into val=1123 and decimalPlaces=3", () => {
-    const s = "1.123";
-    const pf = ParsedFunds.parse(s);
+// Token Precision tests
+test("TokenPrecision rejects invalid precision", () => {
+    expect(() => new TokenPrecision(-1)).toThrow();
+    expect(() => new TokenPrecision(19)).toThrow();
+});
 
+// ParsedFunds tests
+test("ParsedFunds.parse valid input", () => {
+    const pf = ParsedFunds.parse("1.123");
     expect(pf).not.toBeNull();
     expect(pf!.val).toBe(1123n);
     expect(pf!.decimalPlaces).toBe(3);
 });
-
-test("Funds.parse (uint64 conversion behavior) for parsed 1.123 at precisions 0, 4, 12, 16", () => {
-    const s = "1.123";
-    const pf = ParsedFunds.parse(s);
-
-    expect(pf).not.toBeNull();
-
-    // Funds_uint64(pf, 0): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(0))).toBeNull();
-
-    // Funds_uint64(pf, 4) = 11230
-    const f4 = Funds.parse(pf!, new TokenPrecision(4));
-    expect(f4).not.toBeNull();
-    expect(f4!.amount).toBe(11230n);
-
-    // Funds_uint64(pf, 12) = 1123000000000
-    const f12 = Funds.parse(pf!, new TokenPrecision(12));
-    expect(f12).not.toBeNull();
-    expect(f12!.amount).toBe(1123000000000n);
-
-    // Funds_uint64(pf, 16) = 11230000000000000
-    const f16 = Funds.parse(pf!, new TokenPrecision(16));
-    expect(f16).not.toBeNull();
-    expect(f16!.amount).toBe(11230000000000000n);
-});
-
-test("ParsedFunds parses 101.123000 into val=101123000 and decimalPlaces=6", () => {
-    const s = "101.123000";
-    const pf = ParsedFunds.parse(s);
-
+test("ParsedFunds.parse 101.123000", () => {
+    const pf = ParsedFunds.parse("101.123000");
     expect(pf).not.toBeNull();
     expect(pf!.val).toBe(101123000n);
     expect(pf!.decimalPlaces).toBe(6);
 });
-
-test("Funds.parse for parsed 101.123000 at precisions 0, 4, 12, 16", () => {
-    const s = "101.123000";
-    const pf = ParsedFunds.parse(s);
-
-    expect(pf).not.toBeNull();
-
-    // Funds_uint64(pf, 0): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(0))).toBeNull();
-
-    // Funds_uint64(pf, 4): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(4))).toBeNull();
-
-    // Funds_uint64(pf, 12) = 101123000000000
-    const f12 = Funds.parse(pf!, new TokenPrecision(12));
-    expect(f12).not.toBeNull();
-    expect(f12!.amount).toBe(101123000000000n);
-
-    // Funds_uint64(pf, 16) = 1011230000000000000
-    const f16 = Funds.parse(pf!, new TokenPrecision(16));
-    expect(f16).not.toBeNull();
-    expect(f16!.amount).toBe(1011230000000000000n);
-});
-
-test("ParsedFunds parses 101.1230001111 into val=1011230001111 and decimalPlaces=10", () => {
-    const s = "101.1230001111";
-    const pf = ParsedFunds.parse(s);
-
+test("ParsedFunds.parse 101.1230001111", () => {
+    const pf = ParsedFunds.parse("101.1230001111");
     expect(pf).not.toBeNull();
     expect(pf!.val).toBe(1011230001111n);
     expect(pf!.decimalPlaces).toBe(10);
 });
-
-test("Funds.parse for parsed 101.1230001111 at precisions 0, 4, 12, 16", () => {
-    const s = "101.1230001111";
-    const pf = ParsedFunds.parse(s);
-
-    expect(pf).not.toBeNull();
-
-    // Funds_uint64(pf, 0): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(0))).toBeNull();
-
-    // Funds_uint64(pf, 4): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(4))).toBeNull();
-
-    // Funds_uint64(pf, 12) = 101123000111100
-    const f12 = Funds.parse(pf!, new TokenPrecision(12));
-    expect(f12).not.toBeNull();
-    expect(f12!.amount).toBe(101123000111100n);
-
-    // Funds_uint64(pf, 16) = 1011230001111000000
-    const f16 = Funds.parse(pf!, new TokenPrecision(16));
-    expect(f16).not.toBeNull();
-    expect(f16!.amount).toBe(1011230001111000000n);
-});
-
-test("ParsedFunds parses 101.00000000000000 into val=10100000000000000 and decimalPlaces=14", () => {
-    const s = "101.00000000000000";
-    const pf = ParsedFunds.parse(s);
-
+test("ParsedFunds.parse 101.00000000000000", () => {
+    const pf = ParsedFunds.parse("101.00000000000000");
     expect(pf).not.toBeNull();
     expect(pf!.val).toBe(10100000000000000n);
     expect(pf!.decimalPlaces).toBe(14);
 });
-
-test("Funds.parse for parsed 101.00000000000000 at precisions 0, 4, 12, 16", () => {
-    const s = "101.00000000000000";
-    const pf = ParsedFunds.parse(s);
-
-    expect(pf).not.toBeNull();
-
-    // Funds_uint64(pf, 0): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(0))).toBeNull();
-
-    // Funds_uint64(pf, 4): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(4))).toBeNull();
-
-    // Funds_uint64(pf, 12): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(12))).toBeNull();
-
-    // Funds_uint64(pf, 16) = 1010000000000000000
-    const f16 = Funds.parse(pf!, new TokenPrecision(16));
-    expect(f16).not.toBeNull();
-    expect(f16!.amount).toBe(1010000000000000000n);
-});
-
-test("ParsedFunds parses 123123101.001 into val=123123101001 and decimalPlaces=3", () => {
-    const s = "123123101.001";
-    const pf = ParsedFunds.parse(s);
-
+test("ParsedFunds.parse 123123101.001", () => {
+    const pf = ParsedFunds.parse("123123101.001");
     expect(pf).not.toBeNull();
     expect(pf!.val).toBe(123123101001n);
     expect(pf!.decimalPlaces).toBe(3);
 });
+test("ParsedFunds.parse invalid inputs", () => {
+    expect(ParsedFunds.parse("")).toBeNull();
+    expect(ParsedFunds.parse(".")).toBeNull();
+    expect(ParsedFunds.parse("abc")).toBeNull();
+    expect(ParsedFunds.parse("1.1.1")).toBeNull();
+    expect(ParsedFunds.parse("123456789012345678901")).toBeNull();
+    expect(ParsedFunds.parse("18446744073709551616")).toBeNull();
+});
 
-test("Funds.parse for parsed 123123101.001 at precisions 0, 4, 12, 16", () => {
+// Funds tests
+test("Funds.parse valid string input", () => {
+    const f = Funds.parse("1.123", new TokenPrecision(4));
+    expect(f).not.toBeNull();
+    expect(f!.amount).toBe(11230n);
+});
+test("Funds.parse invalid due to precision", () => {
+    const f = Funds.parse("1.123", new TokenPrecision(2));
+    expect(f).toBeNull();
+});
+test("Funds.fromParsedFunds", () => {
+    const pf = new ParsedFunds(1123n, 3);
+    const f = Funds.fromParsedFunds(pf, new TokenPrecision(4));
+    expect(f).not.toBeNull();
+    expect(f!.amount).toBe(11230n);
+});
+test("Funds.fromParsedFunds (uint64 conversion behavior) for parsed 1.123 at precisions 0, 4, 12, 16", () => {
+    const s = "1.123";
+    const pf = ParsedFunds.parse(s);
+    expect(pf).not.toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
+    const f4 = Funds.fromParsedFunds(pf!, new TokenPrecision(4));
+    expect(f4).not.toBeNull();
+    expect(f4!.amount).toBe(11230n);
+    const f12 = Funds.fromParsedFunds(pf!, new TokenPrecision(12));
+    expect(f12).not.toBeNull();
+    expect(f12!.amount).toBe(1123000000000n);
+    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    expect(f16).not.toBeNull();
+    expect(f16!.amount).toBe(11230000000000000n);
+});
+test("Funds.fromParsedFunds for parsed 101.123000 at precisions 0, 4, 12, 16", () => {
+    const s = "101.123000";
+    const pf = ParsedFunds.parse(s);
+    expect(pf).not.toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(4))).toBeNull();
+    const f12 = Funds.fromParsedFunds(pf!, new TokenPrecision(12));
+    expect(f12).not.toBeNull();
+    expect(f12!.amount).toBe(101123000000000n);
+    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    expect(f16).not.toBeNull();
+    expect(f16!.amount).toBe(1011230000000000000n);
+});
+test("Funds.fromParsedFunds for parsed 101.1230001111 at precisions 0, 4, 12, 16", () => {
+    const s = "101.1230001111";
+    const pf = ParsedFunds.parse(s);
+    expect(pf).not.toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(4))).toBeNull();
+    const f12 = Funds.fromParsedFunds(pf!, new TokenPrecision(12));
+    expect(f12).not.toBeNull();
+    expect(f12!.amount).toBe(101123000111100n);
+    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    expect(f16).not.toBeNull();
+    expect(f16!.amount).toBe(1011230001111000000n);
+});
+test("Funds.fromParsedFunds for parsed 101.00000000000000 at precisions 0, 4, 12, 16", () => {
+    const s = "101.00000000000000";
+    const pf = ParsedFunds.parse(s);
+    expect(pf).not.toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(4))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(12))).toBeNull();
+    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    expect(f16).not.toBeNull();
+    expect(f16!.amount).toBe(1010000000000000000n);
+});
+test("Funds.fromParsedFunds for parsed 123123101.001 at precisions 0, 4, 12, 16", () => {
     const s = "123123101.001";
     const pf = ParsedFunds.parse(s);
-
     expect(pf).not.toBeNull();
-
-    // Funds_uint64(pf, 0): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(0))).toBeNull();
-
-    // Funds_uint64(pf, 4) = 1231231010010
-    const f4 = Funds.parse(pf!, new TokenPrecision(4));
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
+    const f4 = Funds.fromParsedFunds(pf!, new TokenPrecision(4));
     expect(f4).not.toBeNull();
     expect(f4!.amount).toBe(1231231010010n);
-
-    // Funds_uint64(pf, 12): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(12))).toBeNull();
-
-    // Funds_uint64(pf, 16): <no value>
-    expect(Funds.parse(pf!, new TokenPrecision(16))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(12))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(16))).toBeNull();
 });
+
+// Wart tests
+test("Wart.parse valid input", () => {
+    const w = Wart.parse("1.123");
+    expect(w).not.toBeNull();
+    expect(w!.amount).toBe(112300000n);
+});
+test("Wart.parse invalid due to too many decimals", () => {
+    expect(Wart.parse("1.123456789")).toBeNull();
+});
+
+test("CompactFee.fromWart amount=0 returns smallest fee", () => {
+    const w = new Wart(0n);
+    const w1 = new Wart(1n);
+    expect(w.feeRounded(false).amount).toBe(1n);
+});
+
+test("Fee rounding", () => {
+    const check_rounding = (s: string) => {
+        const original = Wart.parse(s);
+        expect(original).not.toBeNull();
+
+        // round down
+        const roundedDown = original.feeRounded(false);
+        expect(roundedDown.amount).toBeLessThanOrEqual(original.amount);
+        expect(roundedDown.amount).toBe(roundedDown.feeRounded(true).amount);
+        expect(roundedDown.amount).toBe(roundedDown.feeRounded(false).amount);
+
+        // round up
+        const roundedUp = original.feeRounded(true);
+        expect(roundedUp.amount).toBeGreaterThanOrEqual(original.amount);
+        expect(roundedUp.amount).toBe(roundedUp.feeRounded(true).amount);
+        expect(roundedUp.amount).toBe(roundedUp.feeRounded(false).amount);
+    }
+    check_rounding(".00003112");
+    check_rounding(".00013112");
+    check_rounding(".00113112");
+    check_rounding(".0111283");
+    check_rounding(".32");
+    check_rounding("5.12354");
+    check_rounding("10.02031022");
+});
+
