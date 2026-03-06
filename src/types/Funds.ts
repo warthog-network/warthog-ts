@@ -102,10 +102,10 @@ export class Funds {
 
 // Class to represent Wart amounts
 export class Wart {
-    amount: bigint;
+    E8: bigint;
 
-    constructor(amount: bigint) {
-        this.amount = amount;
+    constructor(E8: bigint) {
+        this.E8 = E8;
     }
 
     public static parse(string: string): Wart | null {
@@ -136,14 +136,14 @@ export class Wart {
 export class CompactFee {
     private constructor(public exponent: number, public mantissa: number) {}
     public static fromWart(wart: Wart, ceil: boolean): CompactFee {
-        if (wart.amount === 0n){
+        if (wart.E8 === 0n){
             // ignore ceil and return smallest fee which corresponds to
             // 0.00000001 WART
             return new CompactFee(0, 0);
         }
         let e = 10;
         const threshold = 0x07FFn;
-        let e8 = wart.amount;
+        let e8 = wart.E8;
         let exact = true;
         while (e8 > threshold) {
             e += 1;

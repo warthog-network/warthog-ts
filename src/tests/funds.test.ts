@@ -131,7 +131,7 @@ test("Funds.fromParsedFunds for parsed 123123101.001 at precisions 0, 4, 12, 16"
 test("Wart.parse valid input", () => {
     const w = Wart.parse("1.123");
     expect(w).not.toBeNull();
-    expect(w!.amount).toBe(112300000n);
+    expect(w!.E8).toBe(112300000n);
 });
 test("Wart.parse invalid due to too many decimals", () => {
     expect(Wart.parse("1.123456789")).toBeNull();
@@ -140,7 +140,7 @@ test("Wart.parse invalid due to too many decimals", () => {
 test("CompactFee.fromWart amount=0 returns smallest fee", () => {
     const w = new Wart(0n);
     const w1 = new Wart(1n);
-    expect(w.feeRounded(false).amount).toBe(1n);
+    expect(w.feeRounded(false).E8).toBe(1n);
 });
 
 test("Fee rounding", () => {
@@ -149,16 +149,16 @@ test("Fee rounding", () => {
         expect(original).not.toBeNull();
 
         // round down
-        const roundedDown = original.feeRounded(false);
-        expect(roundedDown.amount).toBeLessThanOrEqual(original.amount);
-        expect(roundedDown.amount).toBe(roundedDown.feeRounded(true).amount);
-        expect(roundedDown.amount).toBe(roundedDown.feeRounded(false).amount);
+        const roundedDown = original!.feeRounded(false);
+        expect(roundedDown.E8).toBeLessThanOrEqual(original!.E8);
+        expect(roundedDown.E8).toBe(roundedDown.feeRounded(true).E8);
+        expect(roundedDown.E8).toBe(roundedDown.feeRounded(false).E8);
 
         // round up
-        const roundedUp = original.feeRounded(true);
-        expect(roundedUp.amount).toBeGreaterThanOrEqual(original.amount);
-        expect(roundedUp.amount).toBe(roundedUp.feeRounded(true).amount);
-        expect(roundedUp.amount).toBe(roundedUp.feeRounded(false).amount);
+        const roundedUp = original!.feeRounded(true);
+        expect(roundedUp.E8).toBeGreaterThanOrEqual(original!.E8);
+        expect(roundedUp.E8).toBe(roundedUp.feeRounded(true).E8);
+        expect(roundedUp.E8).toBe(roundedUp.feeRounded(false).E8);
     }
     check_rounding(".00003112");
     check_rounding(".00013112");
