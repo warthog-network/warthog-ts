@@ -1,7 +1,5 @@
 import { test, expect } from "bun:test";
-import { Funds } from "../types/Funds";
-import { ParsedFunds } from "../types/ParsedFunds";
-import { TokenPrecision } from "../types/TokenPrecision";
+import { Funds, ParsedFunds, TokenPrecision } from "../types/Funds";
 
 test("ParsedFunds parses 1.123 into val=1123 and decimalPlaces=3", () => {
     const s = "1.123";
