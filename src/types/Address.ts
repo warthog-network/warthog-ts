@@ -1,8 +1,18 @@
 import { ethers } from "ethers";
 
+/**
+ * Warthog address with SHA-256 checksum validation.
+ * Addresses are 20 bytes (40 hex chars) with a 4-byte checksum (8 hex chars),
+ * totaling 48 hex characters.
+ */
 export class Address {
     private constructor(public readonly hex: string) {}
 
+    /**
+     * Parse and validate a 48-character hex address with checksum.
+     * @param hex - 48-character hex string (20 bytes payload + 4 bytes checksum)
+     * @returns Address instance if valid, null otherwise
+     */
     public static fromHex(hex: string): Address | null {
         if (hex.length !== 48) {
             return null;
@@ -26,6 +36,12 @@ export class Address {
         return new Address(hex);
     }
 
+    /**
+     * Create address from raw 40-character hex (20 bytes).
+     * Computes and appends SHA-256 checksum.
+     * @param raw - 40-character hex string (20 bytes, no checksum)
+     * @returns Address instance if valid, null otherwise
+     */
     public static fromRaw(raw: string): Address | null {
         if (raw.length !== 40) {
             return null;

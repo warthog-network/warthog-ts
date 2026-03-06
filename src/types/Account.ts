@@ -6,6 +6,9 @@ import { Address } from "./Address";
 const { ec: EC } = pkg;
 const ecInstance = new EC("secp256k1");
 
+/**
+ * 65-byte ECDSA signature components.
+ */
 export interface Signature65 {
     r: string;
     s: string;
@@ -13,6 +16,10 @@ export interface Signature65 {
     signature: string;
 }
 
+/**
+ * Wallet account for signing transactions on the Warthog network.
+ * Uses secp256k1 elliptic curve for key management.
+ */
 export class Account {
     private privateKeyHex: string;
     private publicKeyHex: string;
@@ -24,16 +31,30 @@ export class Account {
         this.addressHex = addressHex;
     }
 
+    /**
+     * Generate a new random account with a fresh private key.
+     * @returns New Account with randomly generated keypair
+     */
     public static fromRandom(): Account {
         const keyPair = ecInstance.genKeyPair();
         return Account.fromKeyPair(keyPair);
     }
 
+    /**
+     * Load an account from an existing private key.
+     * @param hex - Private key as 64-character hex string
+     * @returns Account derived from the private key
+     */
     public static fromPrivateKeyHex(hex: string): Account {
         const keyPair = ecInstance.keyFromPrivate(hex, "hex");
         return Account.fromKeyPair(keyPair);
     }
 
+    /**
+     * Derive account from an elliptic curve keypair.
+     * @param keyPair - EC keypair to derive from
+     * @returns Account with derived keys and address
+     */
     private static fromKeyPair(keyPair: ec.KeyPair): Account {
         let privateKeyHex = keyPair.getPrivate().toString("hex");
         while (privateKeyHex.length < 64) {
@@ -55,14 +76,26 @@ export class Account {
         return new Account(privateKeyHex, publicKeyHex, addressHex);
     }
 
+    /**
+     * Get the private key as a hex string.
+     * @returns 64-character hex string (32 bytes)
+     */
     public getPrivateKeyHex(): string {
         return this.privateKeyHex;
     }
 
+    /**
+     * Get the public key as a compressed hex string.
+     * @returns 66-character hex string (33 bytes, prefix + 32 bytes)
+     */
     public getPublicKeyHex(): string {
         return this.publicKeyHex;
     }
 
+    /**
+     * Get the Warthog address.
+     * @returns Address instance derived from public key
+     */
     public getAddress(): Address {
         return Address.fromHex(this.addressHex)!;
     }

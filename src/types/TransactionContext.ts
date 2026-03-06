@@ -13,17 +13,37 @@ export interface ChainPin {
     pinHeight: number;
 }
 
+/**
+ * JSON representation of a signed transaction for submission to Warthog nodes.
+ */
 export interface TransactionJson extends Record<string, unknown> {
     type: string;
 }
 
+/**
+ * Transaction builder for creating and signing Warthog transactions.
+ * Obtained via WarthogApi.createTransactionContext().
+ */
 export class TransactionContext {
+    /**
+     * Create a new transaction context.
+     * @param chainPin - Chain pin data from the network
+     * @param fee - Transaction fee
+     * @param nonceId - Unique nonce for the transaction
+     */
     constructor(
         public readonly chainPin: ChainPin,
         public readonly fee: RoundedFee,
         public readonly nonceId: NonceId
     ) {}
 
+    /**
+     * Create a WART native token transfer transaction.
+     * @param account - Account signing the transaction
+     * @param toAddr - Recipient address
+     * @param wart - Amount in WART (E8)
+     * @returns Signed transaction JSON
+     */
     wartTransfer(account: Account, toAddr: Address, wart: Wart): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -48,6 +68,15 @@ export class TransactionContext {
         };
     }
 
+    /**
+     * Create a token transfer transaction.
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param isLiquidity - Whether this transfer is for an asset's liquidity or the asset itself
+     * @param toAddr - Recipient address
+     * @param amountU64 - Amount in token units
+     * @returns Signed transaction JSON
+     */
     tokenTransfer(
         account: Account,
         assetHash: string,
@@ -82,6 +111,15 @@ export class TransactionContext {
         };
     }
 
+    /**
+     * Create a limit swap transaction (buy or sell token for WART).
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param isBuy - True to buy token with WART, false to sell token for WART
+     * @param amountU64 - Amount in E8 (token units for sell, WART E8 for buy)
+     * @param limit - Limit price as Price object
+     * @returns Signed transaction JSON
+     */
     limitSwap(
         account: Account,
         assetHash: string,
@@ -116,6 +154,14 @@ export class TransactionContext {
         };
     }
 
+    /**
+     * Create a liquidity deposit transaction (add tokens + WART to liquidity pool).
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param amountU64 - Token amount to deposit
+     * @param wart - WART amount to deposit
+     * @returns Signed transaction JSON
+     */
     liquidityDeposit(
         account: Account,
         assetHash: string,
@@ -147,6 +193,13 @@ export class TransactionContext {
         };
     }
 
+    /**
+     * Create a liquidity withdrawal transaction (remove tokens + WART from pool).
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param amountE8 - Liquidity units to withdraw
+     * @returns Signed transaction JSON
+     */
     liquidityWithdrawal(
         account: Account,
         assetHash: string,
@@ -175,6 +228,13 @@ export class TransactionContext {
         };
     }
 
+    /**
+     * Create a cancelation transaction (cancel a pending limit order).
+     * @param account - Account signing the transaction
+     * @param cancelHeight - Block height at which the order was placed
+     * @param cancelNonceId - NonceId of the order to cancel
+     * @returns Signed transaction JSON
+     */
     cancelation(
         account: Account,
         cancelHeight: number,
@@ -203,6 +263,14 @@ export class TransactionContext {
         };
     }
 
+    /**
+     * Create an asset creation transaction (create a new token).
+     * @param account - Account signing the transaction
+     * @param supplyU64 - Total supply in token units
+     * @param precision - Token decimal precision (0-18)
+     * @param name - Token name (max 5 ASCII characters)
+     * @returns Signed transaction JSON
+     */
     assetCreation(
         account: Account,
         supplyU64: bigint,
