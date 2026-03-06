@@ -1,10 +1,14 @@
 import type { ec } from "elliptic";
 import pkg from "elliptic";
 import { ethers } from "ethers";
+import { Address } from "./Address";
 
 const { ec: EC } = pkg;
 const ecInstance = new EC("secp256k1");
 
+/**
+ * 65-byte ECDSA signature components.
+ */
 export interface Signature65 {
     r: string;
     s: string;
@@ -12,27 +16,45 @@ export interface Signature65 {
     signature: string;
 }
 
+/**
+ * Wallet account for signing transactions on the Warthog network.
+ * Uses secp256k1 elliptic curve for key management.
+ */
 export class Account {
-    private privateKeyHex: string;
-    private publicKeyHex: string;
-    private addressHex: string;
+    public readonly privateKeyHex: string;
+    public readonly publicKeyHex: string;
+    public readonly address: Address;
 
-    private constructor(privateKeyHex: string, publicKeyHex: string, addressHex: string) {
+    private constructor(privateKeyHex: string, publicKeyHex: string, address: Address) {
         this.privateKeyHex = privateKeyHex;
         this.publicKeyHex = publicKeyHex;
-        this.addressHex = addressHex;
+        this.address = address;
     }
 
+    /**
+     * Generate a new random account with a fresh private key.
+     * @returns New Account with randomly generated keypair
+     */
     public static fromRandom(): Account {
         const keyPair = ecInstance.genKeyPair();
         return Account.fromKeyPair(keyPair);
     }
 
+    /**
+     * Load an account from an existing private key.
+     * @param hex - Private key as 64-character hex string
+     * @returns Account derived from the private key
+     */
     public static fromPrivateKeyHex(hex: string): Account {
         const keyPair = ecInstance.keyFromPrivate(hex, "hex");
         return Account.fromKeyPair(keyPair);
     }
 
+    /**
+     * Derive account from an elliptic curve keypair.
+     * @param keyPair - EC keypair to derive from
+     * @returns Account with derived keys and address
+     */
     private static fromKeyPair(keyPair: ec.KeyPair): Account {
         let privateKeyHex = keyPair.getPrivate().toString("hex");
         while (privateKeyHex.length < 64) {
@@ -51,38 +73,7 @@ export class Account {
         const addressBuffer = Buffer.concat([ripemd160Hash, checksum]);
         const addressHex = addressBuffer.toString("hex");
 
-        return new Account(privateKeyHex, publicKeyHex, addressHex);
-    }
-
-    public getPrivateKeyHex(): string {
-        return this.privateKeyHex;
-    }
-
-    public getPublicKeyHex(): string {
-        return this.publicKeyHex;
-    }
-
-    public getAddress(): string {
-        return this.addressHex;
-    }
-
-    public static validateAddress(address: string): boolean {
-        if (address.length !== 48) {
-            return false;
-        }
-
-        const addressBuffer = Buffer.from(address, "hex");
-        if (addressBuffer.length !== 24) {
-            return false;
-        }
-
-        const payload = addressBuffer.slice(0, 20);
-        const checksum = addressBuffer.slice(20, 24);
-
-        const expectedChecksumHex = ethers.sha256(payload);
-        const expectedChecksum = Buffer.from(expectedChecksumHex.slice(2), "hex").slice(0, 4);
-
-        return checksum.equals(expectedChecksum);
+        return new Account(privateKeyHex, publicKeyHex, Address.fromHex(addressHex)!);
     }
 
     /**
