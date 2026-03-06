@@ -20,7 +20,7 @@ test("Price roundtrip fromDoubleInternal -> toDoubleRaw", () => {
         const output = price!.toDoubleRaw();
         
         console.log(`Input: ${input}, Output: ${output}, Diff: ${(Math.abs(1 - output / input) * 100).toFixed(4)}%`);
-        expect(Math.abs(1 - output / input) * 100).toBeLessThan(0.1);
+        expect(Math.abs(1 - output / input) * 100).toBeLessThan(0.01);
     };
     
     testRoundtrip(0.0000001354);
