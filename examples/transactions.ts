@@ -8,15 +8,15 @@ import { Funds, Liquidity, RoundedFee, TokenPrecision, Wart } from '../src/types
 
 const account = Account.fromRandom();
 
-console.log('Private Key:', account.getPrivateKeyHex());
-console.log('Public Key:', account.getPublicKeyHex());
-console.log('Address:', account.getAddress().hex);
+console.log('Private Key:', account.privateKeyHex);
+console.log('Public Key:', account.publicKeyHex);
+console.log('Address:', account.address.hex);
 
 const existingAccount = Account.fromPrivateKeyHex(
     '966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0'
 );
 
-console.log('Loaded Address:', existingAccount.getAddress().hex);
+console.log('Loaded Address:', existingAccount.address.hex);
 
 const api = new WarthogApi('http://127.0.0.1:3100');
 
@@ -45,23 +45,33 @@ async function runExamples() {
         )
     );
 
-    // Token transfer
+    // Asset transfer (transfer regular tokens)
     context.nonceId = NonceId.fromNumber(2)!;
     await submit(
-        context.tokenTransfer(
+        context.assetTransfer(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
-            false,
             Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
-            Funds.parse('1000', new TokenPrecision(4))!
+            Funds.parse('1000', TokenPrecision.WART)!
+        )
+    );
+
+    // Liquidity transfer (transfer liquidity pool tokens)
+    context.nonceId = NonceId.fromNumber(3)!;
+    await submit(
+        context.liquidityTransfer(
+            existingAccount,
+            'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
+            Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
+            Liquidity.fromE8(100n)!
         )
     );
 
     // Limit buy (spend WART to buy tokens)
-    context.nonceId = NonceId.fromNumber(3)!;
+    context.nonceId = NonceId.fromNumber(5)!;
     // Note: The precision (4) must be obtained from the API's token information
     // for the asset being traded. Different tokens have different precisions.
-    const price = Price.fromNumberPrecision(1.0, new TokenPrecision(4), false)!;
+    const price = Price.fromNumberPrecision(1.0, TokenPrecision.WART, false)!;
     console.log('Price hex:', price.toHex());
     await submit(
         context.limitBuy(
@@ -73,29 +83,29 @@ async function runExamples() {
     );
 
     // Limit sell (sell tokens for WART)
-    context.nonceId = NonceId.fromNumber(4)!;
+    context.nonceId = NonceId.fromNumber(6)!;
     await submit(
         context.limitSell(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
-            Funds.parse('1000', new TokenPrecision(4))!,
+            Funds.parse('1000', TokenPrecision.WART)!,
             price
         )
     );
 
     // Liquidity deposit
-    context.nonceId = NonceId.fromNumber(5)!;
+    context.nonceId = NonceId.fromNumber(7)!;
     await submit(
         context.liquidityDeposit(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
-            Funds.parse('1000', new TokenPrecision(4))!,
+            Funds.parse('1000', TokenPrecision.WART)!,
             Wart.fromE8(100000000n)!
         )
     );
 
     // Liquidity withdrawal
-    context.nonceId = NonceId.fromNumber(6)!;
+    context.nonceId = NonceId.fromNumber(8)!;
     await submit(
         context.liquidityWithdrawal(
             existingAccount,
@@ -105,15 +115,15 @@ async function runExamples() {
     );
 
     // Cancelation
-    context.nonceId = NonceId.fromNumber(7)!;
+    context.nonceId = NonceId.fromNumber(9)!;
     await submit(
         context.cancelation(existingAccount, 0, 1)
     );
 
     // Asset creation
-    context.nonceId = NonceId.fromNumber(8)!;
+    context.nonceId = NonceId.fromNumber(10)!;
     await submit(
-        context.assetCreation(existingAccount, Funds.parse('10000', new TokenPrecision(4))!, new TokenPrecision(4), 'TOK2')
+        context.assetCreation(existingAccount, Funds.parse('10000', TokenPrecision.WART)!, TokenPrecision.WART, 'TOK2')
     );
 }
 

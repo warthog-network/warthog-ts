@@ -10,8 +10,8 @@ test("HDWallet.fromMnemonic return valid Account", () => {
   expect(wallet).not.toBeNull();
   const account = wallet.deriveAccountAtIndex(0);
 
-  expect(account.getAddress().hex.length).toBe(48);
-  expect(account.getPrivateKeyHex().length).toBe(64);
+  expect(account.address.hex.length).toBe(48);
+  expect(account.privateKeyHex.length).toBe(64);
 });
 
 test("HDWallet.deriveAccountAtIndex(0) != deriveAccount(1)", () => {
@@ -22,7 +22,7 @@ test("HDWallet.deriveAccountAtIndex(0) != deriveAccount(1)", () => {
   const account0 = wallet.deriveAccountAtIndex(0);
   const account1 = wallet.deriveAccountAtIndex(1);
 
-  expect(account0.getAddress().hex).not.toBe(account1.getAddress().hex);
+  expect(account0.address.hex).not.toBe(account1.address.hex);
 });
 
 test("HDWallet full path derivation matches index method", () => {
@@ -33,5 +33,5 @@ test("HDWallet full path derivation matches index method", () => {
   const accountFromIndex = wallet.deriveAccountAtIndex(0);
   const accountFromPath = wallet.deriveAccountFromPath("0/0");
 
-  expect(accountFromIndex.getAddress().hex).toBe(accountFromPath.getAddress().hex);
+  expect(accountFromIndex.address.hex).toBe(accountFromPath.address.hex);
 });

@@ -21,14 +21,14 @@ export interface Signature65 {
  * Uses secp256k1 elliptic curve for key management.
  */
 export class Account {
-    private privateKeyHex: string;
-    private publicKeyHex: string;
-    private addressHex: string;
+    public readonly privateKeyHex: string;
+    public readonly publicKeyHex: string;
+    public readonly address: Address;
 
-    private constructor(privateKeyHex: string, publicKeyHex: string, addressHex: string) {
+    private constructor(privateKeyHex: string, publicKeyHex: string, address: Address) {
         this.privateKeyHex = privateKeyHex;
         this.publicKeyHex = publicKeyHex;
-        this.addressHex = addressHex;
+        this.address = address;
     }
 
     /**
@@ -73,31 +73,7 @@ export class Account {
         const addressBuffer = Buffer.concat([ripemd160Hash, checksum]);
         const addressHex = addressBuffer.toString("hex");
 
-        return new Account(privateKeyHex, publicKeyHex, addressHex);
-    }
-
-    /**
-     * Get the private key as a hex string.
-     * @returns 64-character hex string (32 bytes)
-     */
-    public getPrivateKeyHex(): string {
-        return this.privateKeyHex;
-    }
-
-    /**
-     * Get the public key as a compressed hex string.
-     * @returns 66-character hex string (33 bytes, prefix + 32 bytes)
-     */
-    public getPublicKeyHex(): string {
-        return this.publicKeyHex;
-    }
-
-    /**
-     * Get the Warthog address.
-     * @returns Address instance derived from public key
-     */
-    public getAddress(): Address {
-        return Address.fromHex(this.addressHex)!;
+        return new Account(privateKeyHex, publicKeyHex, Address.fromHex(addressHex)!);
     }
 
     /**

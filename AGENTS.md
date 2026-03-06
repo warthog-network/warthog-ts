@@ -255,21 +255,35 @@ context.wartTransfer(
     amount: Wart
 )
 
-// Token transfer
-context.tokenTransfer(
+// Asset transfer (transfer regular tokens)
+context.assetTransfer(
     account: Account,
     asset: string,      // Asset hash hex
-    isLiquidity: boolean,
     recipient: Address,
     amount: Funds       // Token amount with precision
 )
 
-// Limit swap
-context.limitSwap(
+// Liquidity transfer (transfer liquidity pool tokens)
+context.liquidityTransfer(
+    account: Account,
+    asset: string,      // Asset hash hex
+    recipient: Address,
+    units: Liquidity    // Liquidity units
+)
+
+// Limit buy (spend WART to buy tokens)
+context.limitBuy(
     account: Account,
     asset: string,     // Asset hash hex
-    isBuy: boolean,
-    amount: Funds,     // Amount in E8
+    wartAmount: Wart,  // WART amount to spend
+    limit: Price       // Limit price
+)
+
+// Limit sell (sell tokens for WART)
+context.limitSell(
+    account: Account,
+    asset: string,     // Asset hash hex
+    tokenAmount: Funds, // Token amount to sell
     limit: Price       // Limit price
 )
 

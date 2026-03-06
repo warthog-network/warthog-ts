@@ -74,20 +74,54 @@ export class TransactionContext {
     }
 
     /**
-     * Create a token transfer transaction.
+     * Create an asset transfer transaction.
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
-     * @param isLiquidity - Whether this transfer is for an asset's liquidity or the asset itself
      * @param toAddr - Recipient address
      * @param amount - Amount in token units
      * @returns Signed transaction JSON
      */
-    tokenTransfer(
+    assetTransfer(
+        account: Account,
+        assetHash: string,
+        toAddr: Address,
+        amount: Funds
+    ): TransactionJson {
+        return this.tokenTransferInternal(account, assetHash, false, toAddr, amount.amount);
+    }
+
+    /**
+     * Create a liquidity transfer transaction.
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param toAddr - Recipient address
+     * @param units - Liquidity units to transfer
+     * @returns Signed transaction JSON
+     */
+    liquidityTransfer(
+        account: Account,
+        assetHash: string,
+        toAddr: Address,
+        units: Liquidity
+    ): TransactionJson {
+        return this.tokenTransferInternal(account, assetHash, true, toAddr, units.E8);
+    }
+
+    /**
+     * Internal token transfer implementation.
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param isLiquidity - Whether this transfer is for an asset's liquidity or the asset itself
+     * @param toAddr - Recipient address
+     * @param amountE8 - Amount in E8
+     * @returns Signed transaction JSON
+     */
+    private tokenTransferInternal(
         account: Account,
         assetHash: string,
         isLiquidity: boolean,
         toAddr: Address,
-        amount: Funds
+        amountE8: bigint
     ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -98,7 +132,7 @@ export class TransactionContext {
             hashToBytes(assetHash),
             Buffer.from([isLiquidity ? 1 : 0]),
             addressToBytes(toAddr.hex),
-            uint64BE(amount.amount),
+            uint64BE(amountE8),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
         const sig = account.sign(hash);
@@ -111,7 +145,7 @@ export class TransactionContext {
             assetHash,
             isLiquidity,
             toAddr: toAddr.hex,
-            amountU64: amount.amount,
+            amountU64: amountE8,
             signature65: sig.signature,
         };
     }

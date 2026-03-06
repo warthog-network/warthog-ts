@@ -9,7 +9,10 @@ export { TokenPrecision };
 /**
  * Represents a swap price in normalized mantissa/exponent format.
  * - Mantissa: 16 bits, must be in range [0x8000, 0xFFFF] (high bit set for normalization)
- * - Exponent: 8 bits, range [0, 127], stored as raw + 63 internally
+ * - Exponent: 8 bits, stored with offset +63 internally to map to range [0, 127]
+ * The price is agnostic to any token precision so if it shall be applied
+ * to a specific market, the number of decimals of the involved token traded is relevant
+ * for construction and printing (to double) of this representation.
  * 
  * Used for limit orders and price representation in swap transactions.
  */
@@ -24,18 +27,17 @@ export class Price {
      * @param m - Mantissa value to check
      * @returns true if in range [0x8000, 0xFFFF]
      */
-    public static isMantissa(m: number): boolean {
+    private static isMantissa(m: number): boolean {
         // Must have high bit set (normalized): 0x8000 <= m <= 0xFFFF
         return m >= MIN_MANTISSA && m <= MAX_MANTISSA;
     }
 
     /**
-     * Check if a raw exponent is valid (before +63 adjustment).
+     * Check if a internal exponent representation is valid.
      * @param e - Exponent value to check
      * @returns true if in range [0, 127]
      */
-    public static isExponent(e: number): boolean {
-        // Raw exponent (before +63 adjustment): 0 <= e < 128
+    private static isExponent(e: number): boolean {
         return e >= 0 && e < 128;
     }
 
@@ -49,7 +51,7 @@ export class Price {
     }
 
     /**
-     * Convert stored exponent to base-2 exponent.
+     * Convert stored internal exponent to base-2 exponent.
      * @returns Base-2 exponent (exponent - 63)
      */
     private exponentBase2(): number {
@@ -57,8 +59,9 @@ export class Price {
     }
 
     /**
-     * Get the mantissa's exponent in base-2 representation.
-     * @returns Base-2 exponent for mantissa (exponent - 79)
+     * Get the base-2 exponent if mantissa is not considered as 
+     * a fraction but as an integer.
+     * @returns Base-2 exponent for mantissa
      */
     public mantissaExponent2(): number {
         return this.exponentBase2() - 16;
@@ -89,7 +92,7 @@ export class Price {
      * @param prec - Token precision of the traded asset
      * @returns Difference between WART precision and token precision
      */
-    public base10_precision_exponent(prec: TokenPrecision): number {
+    private base10_precision_exponent(prec: TokenPrecision): number {
         return TokenPrecision.WART.precision - prec.precision;
     }
 

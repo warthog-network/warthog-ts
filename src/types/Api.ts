@@ -132,7 +132,7 @@ export class WarthogApi {
     }
 
     /**
-     * Submit a signed transaction to the network.
+     * Submit a signed transaction to the API.
      * @param tx - Signed transaction JSON from TransactionContext
      * @returns Transaction hash if successful
      */
