@@ -100,15 +100,36 @@ Wart.parse('1.5')
 // Create directly from E8 (validated against MAX_U64)
 Wart.fromE8(150000000n)
 
-// Convert to fee
+// Convert to rounded fee
 wart.roundedFee(ceil: boolean)
-wart.toCompactFee(ceil: boolean)
+```
+
+### Liquidity
+**File:** `src/types/Funds.ts`
+
+Liquidity pool tokens with 8 decimal places. Used for liquidity deposit/withdrawal transactions.
+
+```typescript
+import { Liquidity } from 'warthog-ts';
+
+// Parse from string ("1.5" = 150000000 E8)
+Liquidity.parse('1.5')
+
+// Create directly from E8 (validated against MAX_U64)
+Liquidity.fromE8(150000000n)
 ```
 
 ### RoundedFee
 **File:** `src/types/Funds.ts`
 
-Transaction fees in compact 16-bit representation.
+Transaction fees in rounded WART format (on 64-bit WART scale).
+
+This is NOT the 16-bit compact representation. It is the result of:
+1. Converting WART to 16-bit compact format (CompactFee)
+2. Converting back to WART scale
+
+This is a lossy operation - the original WART value cannot be restored.
+Warthog nodes require rounded values on the 64-bit WART scale in API calls.
 
 ```typescript
 import { RoundedFee, Wart } from 'warthog-ts';
@@ -129,7 +150,9 @@ fee.toWart()
 ### CompactFee
 **File:** `src/types/Funds.ts`
 
-Internal 16-bit fee representation.
+Warthog's internal 16-bit compact fee representation.
+Used for compact storage and transmission within the protocol.
+Note: This is NOT used in transaction submission API - use RoundedFee instead.
 
 ```typescript
 import { CompactFee, Wart } from 'warthog-ts';
@@ -238,7 +261,7 @@ context.tokenTransfer(
     asset: string,      // Asset hash hex
     isLiquidity: boolean,
     recipient: Address,
-    amount: bigint     // Token units
+    amount: Funds       // Token amount with precision
 )
 
 // Limit swap
@@ -246,23 +269,23 @@ context.limitSwap(
     account: Account,
     asset: string,     // Asset hash hex
     isBuy: boolean,
-    amount: bigint,   // Amount in E8
-    limit: string     // Limit price as hex string
+    amount: Funds,     // Amount in E8
+    limit: Price       // Limit price
 )
 
 // Liquidity deposit
 context.liquidityDeposit(
     account: Account,
-    asset: string,    // Asset hash hex
-    tokenAmount: bigint,
+    asset: string,     // Asset hash hex
+    tokenAmount: Funds,
     wartAmount: Wart
 )
 
 // Liquidity withdrawal
 context.liquidityWithdrawal(
     account: Account,
-    asset: string,   // Asset hash hex
-    units: bigint    // Liquidity units
+    asset: string,    // Asset hash hex
+    units: Liquidity
 )
 
 // Cancelation
@@ -275,8 +298,8 @@ context.cancelation(
 // Asset creation
 context.assetCreation(
     account: Account,
-    totalSupply: bigint,
-    precision: number,
+    totalSupply: Funds,
+    precision: TokenPrecision,
     name: string
 )
 ```
