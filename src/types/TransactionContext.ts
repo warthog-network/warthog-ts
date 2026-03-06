@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { Account } from './Account';
+import { Wart } from './Funds';
 
 const UINT32_BE_BYTES = 4;
 const UINT64_BE_BYTES = 8;
@@ -20,7 +21,7 @@ export class TransactionContext {
         public readonly nonceId: number
     ) {}
 
-    wartTransfer(account: Account, toAddr: string, wartE8: bigint): TransactionJson {
+    wartTransfer(account: Account, toAddr: string, wart: Wart): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -28,7 +29,7 @@ export class TransactionContext {
             Buffer.alloc(3),
             uint64BE(this.feeE8),
             addressToBytes(toAddr),
-            uint64BE(wartE8),
+            uint64BE(wart.E8),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
         const sig = account.sign(hash);
@@ -39,7 +40,7 @@ export class TransactionContext {
             nonceId: this.nonceId,
             feeE8: this.feeE8,
             toAddr,
-            wartE8,
+            wartE8: wart.E8,
             signature65: sig.signature,
         };
     }
@@ -116,7 +117,7 @@ export class TransactionContext {
         account: Account,
         assetHash: string,
         amountU64: bigint,
-        wartE8: bigint
+        wart: Wart
     ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -126,7 +127,7 @@ export class TransactionContext {
             uint64BE(this.feeE8),
             hashToBytes(assetHash),
             uint64BE(amountU64),
-            uint64BE(wartE8),
+            uint64BE(wart.E8),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
         const sig = account.sign(hash);
@@ -138,7 +139,7 @@ export class TransactionContext {
             feeE8: this.feeE8,
             assetHash,
             amountU64,
-            wartE8,
+            wartE8: wart.E8,
             signature65: sig.signature,
         };
     }
