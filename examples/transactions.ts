@@ -1,4 +1,5 @@
 import { Account } from '../src/types/Account';
+import { Address } from '../src/types/Address';
 import { WarthogApi } from '../src/types/Api';
 import { TransactionContext, TransactionJson } from '../src/types/TransactionContext';
 import { Wart } from '../src/types/Funds';
@@ -7,13 +8,13 @@ const account = Account.fromRandom();
 
 console.log('Private Key:', account.getPrivateKeyHex());
 console.log('Public Key:', account.getPublicKeyHex());
-console.log('Address:', account.getAddress());
+console.log('Address:', account.getAddress().hex);
 
 const existingAccount = Account.fromPrivateKeyHex(
     '966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0'
 );
 
-console.log('Loaded Address:', existingAccount.getAddress());
+console.log('Loaded Address:', existingAccount.getAddress().hex);
 
 const api = new WarthogApi('http://127.0.0.1:3100');
 
@@ -33,7 +34,7 @@ async function sendWart() {
     await submit(
         context.wartTransfer(
             existingAccount,
-            '0000000000000000000000000000000000000000de47c9b2',
+            Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
             new Wart(100000000n)
         )
     );
@@ -46,7 +47,7 @@ async function sendToken() {
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             false,
-            '0000000000000000000000000000000000000000de47c9b2',
+            Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
             BigInt(1000)
         )
     );

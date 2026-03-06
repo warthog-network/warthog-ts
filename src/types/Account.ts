@@ -1,6 +1,7 @@
 import type { ec } from "elliptic";
 import pkg from "elliptic";
 import { ethers } from "ethers";
+import { Address } from "./Address";
 
 const { ec: EC } = pkg;
 const ecInstance = new EC("secp256k1");
@@ -62,27 +63,8 @@ export class Account {
         return this.publicKeyHex;
     }
 
-    public getAddress(): string {
-        return this.addressHex;
-    }
-
-    public static validateAddress(address: string): boolean {
-        if (address.length !== 48) {
-            return false;
-        }
-
-        const addressBuffer = Buffer.from(address, "hex");
-        if (addressBuffer.length !== 24) {
-            return false;
-        }
-
-        const payload = addressBuffer.slice(0, 20);
-        const checksum = addressBuffer.slice(20, 24);
-
-        const expectedChecksumHex = ethers.sha256(payload);
-        const expectedChecksum = Buffer.from(expectedChecksumHex.slice(2), "hex").slice(0, 4);
-
-        return checksum.equals(expectedChecksum);
+    public getAddress(): Address {
+        return Address.fromHex(this.addressHex)!;
     }
 
     /**

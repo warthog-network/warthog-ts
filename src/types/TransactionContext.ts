@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { Account } from './Account';
+import { Address } from './Address';
 import { Wart } from './Funds';
 
 const UINT32_BE_BYTES = 4;
@@ -21,14 +22,14 @@ export class TransactionContext {
         public readonly nonceId: number
     ) {}
 
-    wartTransfer(account: Account, toAddr: string, wart: Wart): TransactionJson {
+    wartTransfer(account: Account, toAddr: Address, wart: Wart): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
             uint64BE(this.feeE8),
-            addressToBytes(toAddr),
+            addressToBytes(toAddr.hex),
             uint64BE(wart.E8),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
@@ -39,7 +40,7 @@ export class TransactionContext {
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
             feeE8: this.feeE8,
-            toAddr,
+            toAddr: toAddr.hex,
             wartE8: wart.E8,
             signature65: sig.signature,
         };
@@ -49,7 +50,7 @@ export class TransactionContext {
         account: Account,
         assetHash: string,
         isLiquidity: boolean,
-        toAddr: string,
+        toAddr: Address,
         amountU64: bigint
     ): TransactionJson {
         const binary = Buffer.concat([
@@ -60,7 +61,7 @@ export class TransactionContext {
             uint64BE(this.feeE8),
             hashToBytes(assetHash),
             Buffer.from([isLiquidity ? 1 : 0]),
-            addressToBytes(toAddr),
+            addressToBytes(toAddr.hex),
             uint64BE(amountU64),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
@@ -73,7 +74,7 @@ export class TransactionContext {
             feeE8: this.feeE8,
             assetHash,
             isLiquidity,
-            toAddr,
+            toAddr: toAddr.hex,
             amountU64,
             signature65: sig.signature,
         };
