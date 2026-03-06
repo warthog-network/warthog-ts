@@ -1,5 +1,6 @@
 import { TransactionContext } from './TransactionContext';
 import type { TransactionJson } from './TransactionContext';
+import { NonceId } from './NonceId';
 import { RoundedFee } from './Funds';
 
 export const KNOWN_NODES = [
@@ -96,7 +97,7 @@ export class WarthogApi {
         });
     }
 
-    async createTransactionContext(fee: RoundedFee, nonceId: number): Promise<TransactionContext> {
+    async createTransactionContext(fee: RoundedFee, nonceId: NonceId): Promise<TransactionContext> {
         const headResult = await this.getChainHead();
         if (!headResult.success) {
             throw new Error(headResult.error);

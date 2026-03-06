@@ -2,6 +2,7 @@ import { Account } from '../src/types/Account';
 import { Address } from '../src/types/Address';
 import { WarthogApi } from '../src/types/Api';
 import { TransactionContext, TransactionJson } from '../src/types/TransactionContext';
+import { NonceId } from '../src/types/NonceId';
 import { RoundedFee, Wart } from '../src/types/Funds';
 
 const account = Account.fromRandom();
@@ -30,7 +31,7 @@ async function submit(txJson: TransactionJson) {
 }
 
 async function sendWart() {
-    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, Math.floor(Math.random() * 100000));
+    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, NonceId.random());
     await submit(
         context.wartTransfer(
             existingAccount,
@@ -41,7 +42,7 @@ async function sendWart() {
 }
 
 async function sendToken() {
-    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, Math.floor(Math.random() * 100000));
+    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, NonceId.random());
     await submit(
         context.tokenTransfer(
             existingAccount,
@@ -54,7 +55,7 @@ async function sendToken() {
 }
 
 async function limitSwap() {
-    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, Math.floor(Math.random() * 100000));
+    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, NonceId.random());
     await submit(
         context.limitSwap(
             existingAccount,
@@ -67,7 +68,7 @@ async function limitSwap() {
 }
 
 async function liquidityDeposit() {
-    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, Math.floor(Math.random() * 100000));
+    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, NonceId.random());
     await submit(
         context.liquidityDeposit(
             existingAccount,
@@ -79,7 +80,7 @@ async function liquidityDeposit() {
 }
 
 async function liquidityWithdrawal() {
-    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, Math.floor(Math.random() * 100000));
+    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, NonceId.random());
     await submit(
         context.liquidityWithdrawal(
             existingAccount,
@@ -90,14 +91,14 @@ async function liquidityWithdrawal() {
 }
 
 async function cancelTransaction() {
-    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, Math.floor(Math.random() * 100000));
+    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, NonceId.random());
     await submit(
         context.cancelation(existingAccount, 0, 1)
     );
 }
 
 async function createAsset() {
-    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, Math.floor(Math.random() * 100000));
+    const context = await api.createTransactionContext(RoundedFee.fromE8(1n, false)!, NonceId.random());
     await submit(
         context.assetCreation(existingAccount, BigInt(1000000000000), 4, 'TOK2')
     );

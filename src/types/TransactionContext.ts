@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import { Account } from './Account';
 import { Address } from './Address';
+import { NonceId } from './NonceId';
 import { RoundedFee, Wart } from './Funds';
 
 const UINT32_BE_BYTES = 4;
@@ -19,14 +20,14 @@ export class TransactionContext {
     constructor(
         public readonly chainPin: ChainPin,
         public readonly fee: RoundedFee,
-        public readonly nonceId: number
+        public readonly nonceId: NonceId
     ) {}
 
     wartTransfer(account: Account, toAddr: Address, wart: Wart): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
-            uint32BE(this.nonceId),
+            uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             addressToBytes(toAddr.hex),
@@ -38,7 +39,7 @@ export class TransactionContext {
         return {
             type: 'wartTransfer',
             pinHeight: this.chainPin.pinHeight,
-            nonceId: this.nonceId,
+            nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             toAddr: toAddr.hex,
             wartE8: wart.E8,
@@ -56,7 +57,7 @@ export class TransactionContext {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
-            uint32BE(this.nonceId),
+            uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
@@ -70,7 +71,7 @@ export class TransactionContext {
         return {
             type: 'tokenTransfer',
             pinHeight: this.chainPin.pinHeight,
-            nonceId: this.nonceId,
+            nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
             isLiquidity,
@@ -90,7 +91,7 @@ export class TransactionContext {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
-            uint32BE(this.nonceId),
+            uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
@@ -104,7 +105,7 @@ export class TransactionContext {
         return {
             type: 'limitSwap',
             pinHeight: this.chainPin.pinHeight,
-            nonceId: this.nonceId,
+            nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
             isBuy,
@@ -123,7 +124,7 @@ export class TransactionContext {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
-            uint32BE(this.nonceId),
+            uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
@@ -136,7 +137,7 @@ export class TransactionContext {
         return {
             type: 'liquidityDeposit',
             pinHeight: this.chainPin.pinHeight,
-            nonceId: this.nonceId,
+            nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
             amountU64,
@@ -153,7 +154,7 @@ export class TransactionContext {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
-            uint32BE(this.nonceId),
+            uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
@@ -165,7 +166,7 @@ export class TransactionContext {
         return {
             type: 'liquidityWithdrawal',
             pinHeight: this.chainPin.pinHeight,
-            nonceId: this.nonceId,
+            nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
             amountE8,
@@ -181,7 +182,7 @@ export class TransactionContext {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
-            uint32BE(this.nonceId),
+            uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             uint32BE(cancelHeight),
@@ -193,7 +194,7 @@ export class TransactionContext {
         return {
             type: 'cancelation',
             pinHeight: this.chainPin.pinHeight,
-            nonceId: this.nonceId,
+            nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             cancelHeight,
             cancelNonceId,
@@ -212,7 +213,7 @@ export class TransactionContext {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
-            uint32BE(this.nonceId),
+            uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             uint64BE(supplyU64),
@@ -225,7 +226,7 @@ export class TransactionContext {
         return {
             type: 'assetCreation',
             pinHeight: this.chainPin.pinHeight,
-            nonceId: this.nonceId,
+            nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             supplyU64,
             precision,
