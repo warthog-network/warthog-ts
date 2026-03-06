@@ -138,8 +138,8 @@ test("Wart.parse invalid due to too many decimals", () => {
 });
 
 test("CompactFee.fromWart amount=0 returns smallest fee", () => {
-    const w = new Wart(0n);
-    const w1 = new Wart(1n);
+    const w = Wart.fromE8(0n)!;
+    const w1 = Wart.fromE8(1n)!;
     expect(w.roundedFee(false).E8).toBe(1n);
 });
 

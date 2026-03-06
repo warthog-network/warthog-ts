@@ -36,7 +36,7 @@ async function sendWart() {
         context.wartTransfer(
             existingAccount,
             Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
-            new Wart(100000000n)
+            Wart.fromE8(100000000n)!
         )
     );
 }
@@ -74,7 +74,7 @@ async function liquidityDeposit() {
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             BigInt(1000),
-            new Wart(100000000n)
+            Wart.fromE8(100000000n)!
         )
     );
 }

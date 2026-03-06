@@ -84,7 +84,7 @@ function valueFrom(fd: ParsedFunds, precision: number): bigint | null {
 export class Funds {
     amount: bigint;
 
-    constructor(amount: bigint) {
+    private constructor(amount: bigint) {
         this.amount = amount;
     }
 
@@ -104,7 +104,7 @@ export class Funds {
 export class Wart {
     E8: bigint;
 
-    constructor(E8: bigint) {
+    private constructor(E8: bigint) {
         this.E8 = E8;
     }
 
@@ -156,7 +156,7 @@ export class RoundedFee {
     }
 
     public toWart(): Wart {
-        return new Wart(this.E8);
+        return Wart.fromE8(this.E8)!;
     }
 }
 
@@ -197,9 +197,9 @@ export class CompactFee {
     }
     public toWart(): Wart {
         if (this.exponent < 10) {
-            return new Wart(BigInt(1024 + this.mantissa) >> BigInt(10 - this.exponent));
+            return Wart.fromE8(BigInt(1024 + this.mantissa) >> BigInt(10 - this.exponent))!;
         } else {
-            return new Wart(BigInt(1024 + this.mantissa) << BigInt(this.exponent - 10));
+            return Wart.fromE8(BigInt(1024 + this.mantissa) << BigInt(this.exponent - 10))!;
         }
     }
 }
