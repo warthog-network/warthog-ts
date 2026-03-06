@@ -1,0 +1,44 @@
+import { test, expect } from "bun:test";
+import { Price } from "../types/Price";
+
+test("Price fromDouble rejects invalid input", () => {
+    // Zero, negative, infinity, and NaN are invalid
+    expect(Price.fromDouble(0.0)).toBeNull();
+    expect(Price.fromDouble(0)).toBeNull();
+    expect(Price.fromDouble(-1.0)).toBeNull();
+    expect(Price.fromDouble(-0.5)).toBeNull();
+    expect(Price.fromDouble(Infinity)).toBeNull();
+    expect(Price.fromDouble(-Infinity)).toBeNull();
+    expect(Price.fromDouble(NaN)).toBeNull();
+});
+
+test("Price roundtrip fromDouble -> toDoubleRaw", () => {
+    const testRoundtrip = (input: number) => {
+        const price = Price.fromDouble(input);
+        expect(price).not.toBeNull();
+        
+        const output = price!.toDoubleRaw();
+        
+        console.log(`Input: ${input}, Output: ${output}, Diff: ${(Math.abs(1 - output / input) * 100).toFixed(4)}%`);
+        expect(Math.abs(1 - output / input) * 100).toBeLessThan(0.1);
+    };
+    
+    testRoundtrip(0.0000001354);
+    testRoundtrip(0.000001345);
+    testRoundtrip(0.000016574);
+    testRoundtrip(0.00012043);
+    testRoundtrip(0.0011239);
+    testRoundtrip(0.02341);
+    testRoundtrip(0.1812);
+    testRoundtrip(0.5123);
+    testRoundtrip(1.813);
+    testRoundtrip(2.5213);
+    testRoundtrip(16.430);
+    testRoundtrip(194.75);
+    testRoundtrip(1834.5678);
+    testRoundtrip(12093);
+    testRoundtrip(234091);
+    testRoundtrip(9582389);
+    testRoundtrip(190123900);
+    testRoundtrip(9230942914);
+});

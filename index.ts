@@ -1,4 +1,5 @@
 export { Funds, ParsedFunds, TokenPrecision, Wart, CompactFee, RoundedFee, MAX_U64 } from "./src/types/Funds";
+export { Price } from "./src/types/Price";
 export { Account } from "./src/types/Account";
 export { Address } from "./src/types/Address";
 export { NonceId } from "./src/types/NonceId";

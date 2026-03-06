@@ -3,6 +3,8 @@ export const MAX_U64 = 0xffffffffffffffffn;
 
 // Class to represent Warthog's token precision
 export class TokenPrecision {
+    public static readonly WART = new TokenPrecision(8);
+
     constructor(public precision: number) {
         if (precision < 0 || precision > 18) {
             throw new Error("Invalid precision");
@@ -114,7 +116,7 @@ export class Wart {
         return Wart.fromParsedFunds(fd);
     }
     public static fromParsedFunds(fd: ParsedFunds): Wart | null {
-        const value = valueFrom(fd, 8);
+        const value = valueFrom(fd, TokenPrecision.WART.precision);
         if (value === null) return null;
         return new Wart(value);
     }
