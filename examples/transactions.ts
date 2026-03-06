@@ -38,7 +38,7 @@ async function runExamples() {
     // WART transfer
     context.nonceId = NonceId.fromNumber(1)!;
     await submit(
-        context.wartTransfer(
+        context.transferWart(
             existingAccount,
             Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
             Wart.fromE8(100000000n)!
@@ -48,7 +48,7 @@ async function runExamples() {
     // Asset transfer (transfer regular tokens)
     context.nonceId = NonceId.fromNumber(2)!;
     await submit(
-        context.assetTransfer(
+        context.transferAsset(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
@@ -59,7 +59,7 @@ async function runExamples() {
     // Liquidity transfer (transfer liquidity pool tokens)
     context.nonceId = NonceId.fromNumber(3)!;
     await submit(
-        context.liquidityTransfer(
+        context.transferLiquidity(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
@@ -74,7 +74,7 @@ async function runExamples() {
     const price = Price.fromNumberPrecision(1.0, TokenPrecision.WART, false)!;
     console.log('Price hex:', price.toHex());
     await submit(
-        context.limitBuy(
+        context.buy(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             Wart.fromE8(100000000n)!,
@@ -85,7 +85,7 @@ async function runExamples() {
     // Limit sell (sell tokens for WART)
     context.nonceId = NonceId.fromNumber(6)!;
     await submit(
-        context.limitSell(
+        context.sell(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             Funds.parse('1000', TokenPrecision.WART)!,
@@ -93,10 +93,10 @@ async function runExamples() {
         )
     );
 
-    // Liquidity deposit
+    // Liquidity deposit into pool
     context.nonceId = NonceId.fromNumber(7)!;
     await submit(
-        context.liquidityDeposit(
+        context.depositLiquidity(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             Funds.parse('1000', TokenPrecision.WART)!,
@@ -104,10 +104,10 @@ async function runExamples() {
         )
     );
 
-    // Liquidity withdrawal
+    // Liquidity withdrawal from pool
     context.nonceId = NonceId.fromNumber(8)!;
     await submit(
-        context.liquidityWithdrawal(
+        context.withdrawLiquidity(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             Liquidity.fromE8(100n)!
@@ -117,13 +117,13 @@ async function runExamples() {
     // Cancelation
     context.nonceId = NonceId.fromNumber(9)!;
     await submit(
-        context.cancelation(existingAccount, 0, 1)
+        context.cancelTransaction(existingAccount, 0, 1)
     );
 
     // Asset creation
     context.nonceId = NonceId.fromNumber(10)!;
     await submit(
-        context.assetCreation(existingAccount, Funds.parse('10000', TokenPrecision.WART)!, TokenPrecision.WART, 'TOK2')
+        context.createAssets(existingAccount, Funds.parse('10000', TokenPrecision.WART)!, TokenPrecision.WART, 'TOK2')
     );
 }
 

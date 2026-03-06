@@ -49,7 +49,7 @@ export class TransactionContext {
      * @param wart - Amount in WART (E8)
      * @returns Signed transaction JSON
      */
-    wartTransfer(account: Account, toAddr: Address, wart: Wart): TransactionJson {
+    transferWart(account: Account, toAddr: Address, wart: Wart): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
@@ -81,7 +81,7 @@ export class TransactionContext {
      * @param amount - Amount in token units
      * @returns Signed transaction JSON
      */
-    assetTransfer(
+    transferAsset(
         account: Account,
         assetHash: string,
         toAddr: Address,
@@ -98,7 +98,7 @@ export class TransactionContext {
      * @param units - Liquidity units to transfer
      * @returns Signed transaction JSON
      */
-    liquidityTransfer(
+    transferLiquidity(
         account: Account,
         assetHash: string,
         toAddr: Address,
@@ -158,7 +158,7 @@ export class TransactionContext {
      * @param limit - Limit price as Price object
      * @returns Signed transaction JSON
      */
-    limitBuy(account: Account, assetHash: string, wartAmount: Wart, limit: Price): TransactionJson {
+    buy(account: Account, assetHash: string, wartAmount: Wart, limit: Price): TransactionJson {
         return this.limitSwapInternal(account, assetHash, true, wartAmount.E8, limit);
     }
 
@@ -170,7 +170,7 @@ export class TransactionContext {
      * @param limit - Limit price as Price object
      * @returns Signed transaction JSON
      */
-    limitSell(account: Account, assetHash: string, tokenAmount: Funds, limit: Price): TransactionJson {
+    sell(account: Account, assetHash: string, tokenAmount: Funds, limit: Price): TransactionJson {
         return this.limitSwapInternal(account, assetHash, false, tokenAmount.amount, limit);
     }
 
@@ -225,7 +225,7 @@ export class TransactionContext {
      * @param wart - WART amount to deposit
      * @returns Signed transaction JSON
      */
-    liquidityDeposit(
+    depositLiquidity(
         account: Account,
         assetHash: string,
         tokenAmount: Funds,
@@ -257,13 +257,13 @@ export class TransactionContext {
     }
 
     /**
-     * Create a liquidity withdrawal transaction (remove tokens + WART from pool).
+     * Create a liquidity withdrawal transaction (remove tokens + WART from liquidity pool).
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
      * @param units - Liquidity units to withdraw
      * @returns Signed transaction JSON
      */
-    liquidityWithdrawal(
+    withdrawLiquidity(
         account: Account,
         assetHash: string,
         units: Liquidity
@@ -292,13 +292,13 @@ export class TransactionContext {
     }
 
     /**
-     * Create a cancelation transaction (cancel a pending limit order).
+     * Create a cancelTransaction transaction (cancel a pending limit order).
      * @param account - Account signing the transaction
      * @param cancelHeight - Block height at which the order was placed
      * @param cancelNonceId - NonceId of the order to cancel
      * @returns Signed transaction JSON
      */
-    cancelation(
+    cancelTransaction(
         account: Account,
         cancelHeight: number,
         cancelNonceId: number
@@ -334,7 +334,7 @@ export class TransactionContext {
      * @param name - Token name (max 5 ASCII characters)
      * @returns Signed transaction JSON
      */
-    assetCreation(
+    createAssets(
         account: Account,
         totalSupply: Funds,
         precision: TokenPrecision,

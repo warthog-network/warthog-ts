@@ -249,14 +249,14 @@ Creates signed transactions. Obtain via `WarthogApi.createTransactionContext()`.
 import { TransactionContext } from 'warthog-ts';
 
 // WART transfer
-context.wartTransfer(
+context.transferWart(
     account: Account,
     recipient: Address,
     amount: Wart
 )
 
 // Asset transfer (transfer regular tokens)
-context.assetTransfer(
+context.transferAsset(
     account: Account,
     asset: string,      // Asset hash hex
     recipient: Address,
@@ -264,53 +264,53 @@ context.assetTransfer(
 )
 
 // Liquidity transfer (transfer liquidity pool tokens)
-context.liquidityTransfer(
+context.transferLiquidity(
     account: Account,
     asset: string,      // Asset hash hex
     recipient: Address,
     units: Liquidity    // Liquidity units
 )
 
-// Limit buy (spend WART to buy tokens)
-context.limitBuy(
+// Buy (spend WART to buy tokens)
+context.buy(
     account: Account,
     asset: string,     // Asset hash hex
     wartAmount: Wart,  // WART amount to spend
     limit: Price       // Limit price
 )
 
-// Limit sell (sell tokens for WART)
-context.limitSell(
+// Sell (sell tokens for WART)
+context.sell(
     account: Account,
     asset: string,     // Asset hash hex
     tokenAmount: Funds, // Token amount to sell
     limit: Price       // Limit price
 )
 
-// Liquidity deposit
-context.liquidityDeposit(
+// Deposit liquidity into pool
+context.depositLiquidity(
     account: Account,
     asset: string,     // Asset hash hex
     tokenAmount: Funds,
     wartAmount: Wart
 )
 
-// Liquidity withdrawal
-context.liquidityWithdrawal(
+// Withdraw liquidity from pool
+context.withdrawLiquidity(
     account: Account,
     asset: string,    // Asset hash hex
     units: Liquidity
 )
 
-// Cancelation
-context.cancelation(
+// Cancel transaction
+context.cancelTransaction(
     account: Account,
     cancelHeight: number,
     cancelNonceId: NonceId
 )
 
-// Asset creation
-context.assetCreation(
+// Create assets
+context.createAssets(
     account: Account,
     totalSupply: Funds,
     precision: TokenPrecision,
