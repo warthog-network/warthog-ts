@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 import { Account } from './Account';
 import { Address } from './Address';
-import { Wart } from './Funds';
+import { RoundedFee, Wart } from './Funds';
 
 const UINT32_BE_BYTES = 4;
 const UINT64_BE_BYTES = 8;
@@ -18,7 +18,7 @@ export interface TransactionJson extends Record<string, unknown> {
 export class TransactionContext {
     constructor(
         public readonly chainPin: ChainPin,
-        public readonly feeE8: bigint,
+        public readonly fee: RoundedFee,
         public readonly nonceId: number
     ) {}
 
@@ -28,7 +28,7 @@ export class TransactionContext {
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
-            uint64BE(this.feeE8),
+            uint64BE(this.fee.E8),
             addressToBytes(toAddr.hex),
             uint64BE(wart.E8),
         ]);
@@ -39,7 +39,7 @@ export class TransactionContext {
             type: 'wartTransfer',
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
-            feeE8: this.feeE8,
+            feeE8: this.fee.E8,
             toAddr: toAddr.hex,
             wartE8: wart.E8,
             signature65: sig.signature,
@@ -58,7 +58,7 @@ export class TransactionContext {
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
-            uint64BE(this.feeE8),
+            uint64BE(this.fee.E8),
             hashToBytes(assetHash),
             Buffer.from([isLiquidity ? 1 : 0]),
             addressToBytes(toAddr.hex),
@@ -71,7 +71,7 @@ export class TransactionContext {
             type: 'tokenTransfer',
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
-            feeE8: this.feeE8,
+            feeE8: this.fee.E8,
             assetHash,
             isLiquidity,
             toAddr: toAddr.hex,
@@ -92,7 +92,7 @@ export class TransactionContext {
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
-            uint64BE(this.feeE8),
+            uint64BE(this.fee.E8),
             hashToBytes(assetHash),
             Buffer.from([isBuy ? 1 : 0]),
             uint64BE(amountU64),
@@ -105,7 +105,7 @@ export class TransactionContext {
             type: 'limitSwap',
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
-            feeE8: this.feeE8,
+            feeE8: this.fee.E8,
             assetHash,
             isBuy,
             amountU64,
@@ -125,7 +125,7 @@ export class TransactionContext {
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
-            uint64BE(this.feeE8),
+            uint64BE(this.fee.E8),
             hashToBytes(assetHash),
             uint64BE(amountU64),
             uint64BE(wart.E8),
@@ -137,7 +137,7 @@ export class TransactionContext {
             type: 'liquidityDeposit',
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
-            feeE8: this.feeE8,
+            feeE8: this.fee.E8,
             assetHash,
             amountU64,
             wartE8: wart.E8,
@@ -155,7 +155,7 @@ export class TransactionContext {
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
-            uint64BE(this.feeE8),
+            uint64BE(this.fee.E8),
             hashToBytes(assetHash),
             uint64BE(amountE8),
         ]);
@@ -166,7 +166,7 @@ export class TransactionContext {
             type: 'liquidityWithdrawal',
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
-            feeE8: this.feeE8,
+            feeE8: this.fee.E8,
             assetHash,
             amountE8,
             signature65: sig.signature,
@@ -183,7 +183,7 @@ export class TransactionContext {
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
-            uint64BE(this.feeE8),
+            uint64BE(this.fee.E8),
             uint32BE(cancelHeight),
             uint32BE(cancelNonceId),
         ]);
@@ -194,7 +194,7 @@ export class TransactionContext {
             type: 'cancelation',
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
-            feeE8: this.feeE8,
+            feeE8: this.fee.E8,
             cancelHeight,
             cancelNonceId,
             signature65: sig.signature,
@@ -214,7 +214,7 @@ export class TransactionContext {
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId),
             Buffer.alloc(3),
-            uint64BE(this.feeE8),
+            uint64BE(this.fee.E8),
             uint64BE(supplyU64),
             Buffer.from([precision]),
             nameBuffer,
@@ -226,7 +226,7 @@ export class TransactionContext {
             type: 'assetCreation',
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId,
-            feeE8: this.feeE8,
+            feeE8: this.fee.E8,
             supplyU64,
             precision,
             name,

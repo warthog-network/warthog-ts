@@ -1,4 +1,4 @@
-export { Funds, ParsedFunds, TokenPrecision, Wart, CompactFee, MAX_U64 } from "./src/types/Funds";
+export { Funds, ParsedFunds, TokenPrecision, Wart, CompactFee, RoundedFee, MAX_U64 } from "./src/types/Funds";
 export { Account } from "./src/types/Account";
 export { Address } from "./src/types/Address";
 export { HDWallet } from "./src/types/HDWallet";

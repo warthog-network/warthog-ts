@@ -1,5 +1,6 @@
 import { TransactionContext } from './TransactionContext';
 import type { TransactionJson } from './TransactionContext';
+import { RoundedFee } from './Funds';
 
 export const KNOWN_NODES = [
     'http://65.87.7.86:3001',
@@ -95,12 +96,12 @@ export class WarthogApi {
         });
     }
 
-    async createTransactionContext(feeE8: bigint, nonceId: number): Promise<TransactionContext> {
+    async createTransactionContext(fee: RoundedFee, nonceId: number): Promise<TransactionContext> {
         const headResult = await this.getChainHead();
         if (!headResult.success) {
             throw new Error(headResult.error);
         }
         const { pinHash, pinHeight } = headResult.data;
-        return new TransactionContext({ pinHash, pinHeight }, feeE8, nonceId);
+        return new TransactionContext({ pinHash, pinHeight }, fee, nonceId);
     }
 }

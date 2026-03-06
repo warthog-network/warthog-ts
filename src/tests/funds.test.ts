@@ -140,7 +140,7 @@ test("Wart.parse invalid due to too many decimals", () => {
 test("CompactFee.fromWart amount=0 returns smallest fee", () => {
     const w = new Wart(0n);
     const w1 = new Wart(1n);
-    expect(w.feeRounded(false).E8).toBe(1n);
+    expect(w.roundedFee(false).E8).toBe(1n);
 });
 
 test("Fee rounding", () => {
@@ -149,16 +149,14 @@ test("Fee rounding", () => {
         expect(original).not.toBeNull();
 
         // round down
-        const roundedDown = original!.feeRounded(false);
+        const roundedDown = original!.roundedFee(false);
         expect(roundedDown.E8).toBeLessThanOrEqual(original!.E8);
-        expect(roundedDown.E8).toBe(roundedDown.feeRounded(true).E8);
-        expect(roundedDown.E8).toBe(roundedDown.feeRounded(false).E8);
+        expect(roundedDown.E8).toBe(roundedDown.toWart().roundedFee(false).E8);
 
         // round up
-        const roundedUp = original!.feeRounded(true);
+        const roundedUp = original!.roundedFee(true);
         expect(roundedUp.E8).toBeGreaterThanOrEqual(original!.E8);
-        expect(roundedUp.E8).toBe(roundedUp.feeRounded(true).E8);
-        expect(roundedUp.E8).toBe(roundedUp.feeRounded(false).E8);
+        expect(roundedUp.E8).toBe(roundedUp.toWart().roundedFee(true).E8);
     }
     check_rounding(".00003112");
     check_rounding(".00013112");

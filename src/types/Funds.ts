@@ -119,16 +119,40 @@ export class Wart {
         return new Wart(value);
     }
 
-    // round to fee representable value, 0 is always rounded to lowest
-    // representable fee which is 0.00000001 WART even if ceil == false
-    // parameter ceil determines ceiling in rounding behavior
-    public feeRounded(ceil: boolean): Wart {
-        return this.toCompactFee(ceil).toWart();
+    public static fromE8(E8: bigint): Wart | null {
+        if (E8 > MAX_U64) {
+            return null;
+        }
+        return new Wart(E8);
     }
 
-    // round to Warthog's internal 16 bit representation
+    public roundedFee(ceil: boolean): RoundedFee {
+        return RoundedFee.fromWart(this, ceil);
+    }
+
     public toCompactFee(ceil: boolean): CompactFee {
         return CompactFee.fromWart(this, ceil);
+    }
+}
+
+// Class to represent a rounded Wart fee (used for transaction fees)
+export class RoundedFee {
+    private constructor(public readonly E8: bigint) {}
+
+    public static fromWart(wart: Wart, ceil: boolean): RoundedFee {
+        const compactFee = CompactFee.fromWart(wart, ceil);
+        const roundedWart = compactFee.toWart();
+        return new RoundedFee(roundedWart.E8);
+    }
+
+    public static fromE8(E8: bigint, ceil: boolean): RoundedFee | null {
+        const wart = Wart.fromE8(E8);
+        if (wart === null) return null;
+        return RoundedFee.fromWart(wart, ceil);
+    }
+
+    public toWart(): Wart {
+        return new Wart(this.E8);
     }
 }
 
