@@ -3,6 +3,7 @@ import { Address } from '../src/types/Address';
 import { WarthogApi } from '../src/types/Api';
 import { TransactionContext, TransactionJson } from '../src/types/TransactionContext';
 import { NonceId } from '../src/types/NonceId';
+import { Price, TokenPrecision } from '../src/types/Price';
 import { RoundedFee, Wart } from '../src/types/Funds';
 
 const account = Account.fromRandom();
@@ -56,13 +57,17 @@ async function sendToken() {
 
 async function limitSwap() {
     const context = await api.createTransactionContext(RoundedFee.min(), NonceId.random());
+    // Note: The precision (4) must be obtained from the API's token information
+    // for the asset being traded. Different tokens have different precisions.
+    const price = Price.fromNumberPrecision(1.0, new TokenPrecision(4), false)!;
+    console.log('Price:', price, 'toHex:', price.toHex());
     await submit(
         context.limitSwap(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             true,
             BigInt(100000000),
-            'c0e74d'
+            price
         )
     );
 }

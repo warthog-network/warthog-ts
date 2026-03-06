@@ -4,6 +4,7 @@ const MAX_EXPONENT = 0xFF;   // 0xFF - maximum exponent (8 bits)
 
 import { frexp } from '../util/frexp';
 import { TokenPrecision } from './Funds';
+export { TokenPrecision };
 
 export class Price {
     private constructor(
@@ -57,12 +58,20 @@ export class Price {
         return new Price(mantissa, exponent);
     }
 
-    public static fromDoubleAdjusted(d: number, basePrec: TokenPrecision, ceil: boolean = false): Price | null {
+    // Use this method to construct a price from a number and the token precision of the 
+    // traded asset.
+    public static fromNumberPrecision(d: number, basePrec: TokenPrecision, ceil: boolean = false): Price | null {
         const adjusted = d * Math.pow(10, 8 - basePrec.precision);
-        return Price.fromDouble(adjusted, ceil);
+        return Price.fromDoubleInternal(adjusted, ceil);
     }
 
-    public static fromDouble(d: number, ceil: boolean = false): Price | null {
+    // This factory method should not be used by library users as it may be easily misused.
+    // Warthog needs to specify the price in normalized form and this normalization depends
+    // on the intended price AND the precision of the token that is traded. 
+    // Warthog prices are with respect to the ratio of the raw 64 bit unsinged amounts of
+    // WART and the traded token. Therefore, to normalize the price properly, users should
+    // call the `fromNumberPrecision` method.
+    public static fromDoubleInternal(d: number, ceil: boolean = false): Price | null {
         if (d <= 0 || !Number.isFinite(d)) {
             return null;
         }

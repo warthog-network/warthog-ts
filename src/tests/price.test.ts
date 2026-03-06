@@ -1,20 +1,20 @@
 import { test, expect } from "bun:test";
 import { Price } from "../types/Price";
 
-test("Price fromDouble rejects invalid input", () => {
+test("Price fromDoubleInternal rejects invalid input", () => {
     // Zero, negative, infinity, and NaN are invalid
-    expect(Price.fromDouble(0.0)).toBeNull();
-    expect(Price.fromDouble(0)).toBeNull();
-    expect(Price.fromDouble(-1.0)).toBeNull();
-    expect(Price.fromDouble(-0.5)).toBeNull();
-    expect(Price.fromDouble(Infinity)).toBeNull();
-    expect(Price.fromDouble(-Infinity)).toBeNull();
-    expect(Price.fromDouble(NaN)).toBeNull();
+    expect(Price.fromDoubleInternal(0.0)).toBeNull();
+    expect(Price.fromDoubleInternal(0)).toBeNull();
+    expect(Price.fromDoubleInternal(-1.0)).toBeNull();
+    expect(Price.fromDoubleInternal(-0.5)).toBeNull();
+    expect(Price.fromDoubleInternal(Infinity)).toBeNull();
+    expect(Price.fromDoubleInternal(-Infinity)).toBeNull();
+    expect(Price.fromDoubleInternal(NaN)).toBeNull();
 });
 
-test("Price roundtrip fromDouble -> toDoubleRaw", () => {
+test("Price roundtrip fromDoubleInternal -> toDoubleRaw", () => {
     const testRoundtrip = (input: number) => {
-        const price = Price.fromDouble(input);
+        const price = Price.fromDoubleInternal(input);
         expect(price).not.toBeNull();
         
         const output = price!.toDoubleRaw();

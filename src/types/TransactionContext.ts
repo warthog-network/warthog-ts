@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import { Account } from './Account';
 import { Address } from './Address';
 import { NonceId } from './NonceId';
+import { Price } from './Price';
 import { RoundedFee, Wart } from './Funds';
 
 const UINT32_BE_BYTES = 4;
@@ -86,7 +87,7 @@ export class TransactionContext {
         assetHash: string,
         isBuy: boolean,
         amountU64: bigint,
-        limit: string
+        limit: Price
     ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -97,7 +98,7 @@ export class TransactionContext {
             hashToBytes(assetHash),
             Buffer.from([isBuy ? 1 : 0]),
             uint64BE(amountU64),
-            Buffer.from(limit, 'hex'),
+            Buffer.from(limit.toHex(), 'hex'),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
         const sig = account.sign(hash);
@@ -110,7 +111,7 @@ export class TransactionContext {
             assetHash,
             isBuy,
             amountU64,
-            limit,
+            limit: limit.toHex(),
             signature65: sig.signature,
         };
     }
