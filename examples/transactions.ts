@@ -3,8 +3,8 @@ import { Address } from '../src/types/Address';
 import { WarthogApi } from '../src/types/Api';
 import { TransactionContext, TransactionJson } from '../src/types/TransactionContext';
 import { NonceId } from '../src/types/NonceId';
-import { Price, TokenPrecision } from '../src/types/Price';
-import { RoundedFee, Wart } from '../src/types/Funds';
+import { Price } from '../src/types/Price';
+import { Funds, Liquidity, RoundedFee, TokenPrecision, Wart } from '../src/types/Funds';
 
 const account = Account.fromRandom();
 
@@ -53,7 +53,7 @@ async function runExamples() {
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             false,
             Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
-            BigInt(1000)
+            Funds.parse('1000', new TokenPrecision(4))!
         )
     );
 
@@ -68,7 +68,7 @@ async function runExamples() {
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             true,
-            BigInt(100000000),
+            Funds.parse('1.0', TokenPrecision.WART)!,
             price
         )
     );
@@ -79,7 +79,7 @@ async function runExamples() {
         context.liquidityDeposit(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
-            BigInt(1000),
+            Funds.parse('1000', new TokenPrecision(4))!,
             Wart.fromE8(100000000n)!
         )
     );
@@ -90,7 +90,7 @@ async function runExamples() {
         context.liquidityWithdrawal(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
-            BigInt(100)
+            Liquidity.fromE8(100n)!
         )
     );
 
@@ -103,7 +103,7 @@ async function runExamples() {
     // Asset creation
     context.nonceId = NonceId.fromNumber(7)!;
     await submit(
-        context.assetCreation(existingAccount, BigInt(1000000000000), 4, 'TOK2')
+        context.assetCreation(existingAccount, Funds.parse('10000', new TokenPrecision(4))!, new TokenPrecision(4), 'TOK2')
     );
 }
 

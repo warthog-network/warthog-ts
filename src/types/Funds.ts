@@ -7,6 +7,8 @@ export const MAX_U64 = 0xffffffffffffffffn;
 export class TokenPrecision {
     /** Pre-configured WART precision (8 decimals) */
     public static readonly WART = new TokenPrecision(8);
+    /** Pre-configured Liquidity precision (8 decimals) */
+    public static readonly LIQUIDITY = new TokenPrecision(8);
 
     /**
      * Create a TokenPrecision instance.
@@ -190,14 +192,52 @@ export class Wart {
     public roundedFee(ceil: boolean): RoundedFee {
         return RoundedFee.fromWart(this, ceil);
     }
+}
+
+/**
+ * Represents liquidity pool tokens with 8 decimal places.
+ * Used for liquidity deposit/withdrawal transactions.
+ */
+export class Liquidity {
+    /** Amount in E8 (1 liquidity unit = 100,000,000 E8) */
+    E8: bigint;
+
+    private constructor(E8: bigint) {
+        this.E8 = E8;
+    }
 
     /**
-     * Convert to compact fee.
-     * @param ceil - If true, round up; otherwise round down
-     * @returns CompactFee
+     * Parse a decimal string to Liquidity.
+     * @param string - Decimal string (e.g., "1.5")
+     * @returns Liquidity or null if invalid
      */
-    public toCompactFee(ceil: boolean): CompactFee {
-        return CompactFee.fromWart(this, ceil);
+    public static parse(string: string): Liquidity | null {
+        const fd = ParsedFunds.parse(string);
+        if (fd === null) return null;
+        return Liquidity.fromParsedFunds(fd);
+    }
+
+    /**
+     * Convert ParsedFunds to Liquidity.
+     * @param fd - Parsed funds
+     * @returns Liquidity or null if invalid
+     */
+    public static fromParsedFunds(fd: ParsedFunds): Liquidity | null {
+        const value = valueFrom(fd, TokenPrecision.LIQUIDITY.precision);
+        if (value === null) return null;
+        return new Liquidity(value);
+    }
+
+    /**
+     * Create Liquidity from E8 value.
+     * @param E8 - Amount in E8 (1 liquidity = 100,000,000 E8)
+     * @returns Liquidity or null if invalid (exceeds MAX_U64)
+     */
+    public static fromE8(E8: bigint): Liquidity | null {
+        if (E8 > MAX_U64) {
+            return null;
+        }
+        return new Liquidity(E8);
     }
 }
 

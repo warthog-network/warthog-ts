@@ -3,7 +3,7 @@ import { Account } from './Account';
 import { Address } from './Address';
 import { NonceId } from './NonceId';
 import { Price } from './Price';
-import { RoundedFee, Wart } from './Funds';
+import { Funds, Liquidity, RoundedFee, TokenPrecision, Wart } from './Funds';
 
 const UINT32_BE_BYTES = 4;
 const UINT64_BE_BYTES = 8;
@@ -79,7 +79,7 @@ export class TransactionContext {
      * @param assetHash - Asset hash as hex string
      * @param isLiquidity - Whether this transfer is for an asset's liquidity or the asset itself
      * @param toAddr - Recipient address
-     * @param amountU64 - Amount in token units
+     * @param amount - Amount in token units
      * @returns Signed transaction JSON
      */
     tokenTransfer(
@@ -87,7 +87,7 @@ export class TransactionContext {
         assetHash: string,
         isLiquidity: boolean,
         toAddr: Address,
-        amountU64: bigint
+        amount: Funds
     ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -98,7 +98,7 @@ export class TransactionContext {
             hashToBytes(assetHash),
             Buffer.from([isLiquidity ? 1 : 0]),
             addressToBytes(toAddr.hex),
-            uint64BE(amountU64),
+            uint64BE(amount.amount),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
         const sig = account.sign(hash);
@@ -111,7 +111,7 @@ export class TransactionContext {
             assetHash,
             isLiquidity,
             toAddr: toAddr.hex,
-            amountU64,
+            amountU64: amount.amount,
             signature65: sig.signature,
         };
     }
@@ -121,7 +121,7 @@ export class TransactionContext {
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
      * @param isBuy - True to buy token with WART, false to sell token for WART
-     * @param amountU64 - Amount in E8 (token units for sell, WART E8 for buy)
+     * @param amount - Amount in E8 (token units for sell, WART E8 for buy)
      * @param limit - Limit price as Price object
      * @returns Signed transaction JSON
      */
@@ -129,7 +129,7 @@ export class TransactionContext {
         account: Account,
         assetHash: string,
         isBuy: boolean,
-        amountU64: bigint,
+        amount: Funds,
         limit: Price
     ): TransactionJson {
         const binary = Buffer.concat([
@@ -140,7 +140,7 @@ export class TransactionContext {
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
             Buffer.from([isBuy ? 1 : 0]),
-            uint64BE(amountU64),
+            uint64BE(amount.amount),
             Buffer.from(limit.toHex(), 'hex'),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
@@ -153,7 +153,7 @@ export class TransactionContext {
             feeE8: this.fee.E8,
             assetHash,
             isBuy,
-            amountU64,
+            amountU64: amount.amount,
             limit: limit.toHex(),
             signature65: sig.signature,
         };
@@ -163,14 +163,14 @@ export class TransactionContext {
      * Create a liquidity deposit transaction (add tokens + WART to liquidity pool).
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
-     * @param amountU64 - Token amount to deposit
+     * @param tokenAmount - Token amount to deposit
      * @param wart - WART amount to deposit
      * @returns Signed transaction JSON
      */
     liquidityDeposit(
         account: Account,
         assetHash: string,
-        amountU64: bigint,
+        tokenAmount: Funds,
         wart: Wart
     ): TransactionJson {
         const binary = Buffer.concat([
@@ -180,7 +180,7 @@ export class TransactionContext {
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
-            uint64BE(amountU64),
+            uint64BE(tokenAmount.amount),
             uint64BE(wart.E8),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
@@ -192,7 +192,7 @@ export class TransactionContext {
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
-            amountU64,
+            amountU64: tokenAmount.amount,
             wartE8: wart.E8,
             signature65: sig.signature,
         };
@@ -202,13 +202,13 @@ export class TransactionContext {
      * Create a liquidity withdrawal transaction (remove tokens + WART from pool).
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
-     * @param amountE8 - Liquidity units to withdraw
+     * @param units - Liquidity units to withdraw
      * @returns Signed transaction JSON
      */
     liquidityWithdrawal(
         account: Account,
         assetHash: string,
-        amountE8: bigint
+        units: Liquidity
     ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -217,7 +217,7 @@ export class TransactionContext {
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
-            uint64BE(amountE8),
+            uint64BE(units.E8),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
         const sig = account.sign(hash);
@@ -228,7 +228,7 @@ export class TransactionContext {
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
-            amountE8,
+            amountE8: units.E8,
             signature65: sig.signature,
         };
     }
@@ -271,15 +271,15 @@ export class TransactionContext {
     /**
      * Create an asset creation transaction (create a new token).
      * @param account - Account signing the transaction
-     * @param supplyU64 - Total supply in token units
+     * @param totalSupply - Total supply in token units
      * @param precision - Token decimal precision (0-18)
      * @param name - Token name (max 5 ASCII characters)
      * @returns Signed transaction JSON
      */
     assetCreation(
         account: Account,
-        supplyU64: bigint,
-        precision: number,
+        totalSupply: Funds,
+        precision: TokenPrecision,
         name: string
     ): TransactionJson {
         const nameBuffer = Buffer.alloc(5);
@@ -290,8 +290,8 @@ export class TransactionContext {
             uint32BE(this.nonceId.value),
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
-            uint64BE(supplyU64),
-            Buffer.from([precision]),
+            uint64BE(totalSupply.amount),
+            Buffer.from([precision.precision]),
             nameBuffer,
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
@@ -302,8 +302,8 @@ export class TransactionContext {
             pinHeight: this.chainPin.pinHeight,
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
-            supplyU64,
-            precision,
+            supplyU64: totalSupply.amount,
+            precision: precision.precision,
             name,
             signature65: sig.signature,
         };
