@@ -301,7 +301,7 @@ export class TransactionContext {
     cancelTransaction(
         account: Account,
         cancelHeight: number,
-        cancelNonceId: number
+        cancelNonceId: NonceId
     ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -310,7 +310,7 @@ export class TransactionContext {
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             uint32BE(cancelHeight),
-            uint32BE(cancelNonceId),
+            uint32BE(cancelNonceId.value),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
         const sig = account.sign(hash);
@@ -321,7 +321,7 @@ export class TransactionContext {
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             cancelHeight,
-            cancelNonceId,
+            cancelNonceId: cancelNonceId.value,
             signature65: sig.signature,
         };
     }

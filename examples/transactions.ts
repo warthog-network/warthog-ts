@@ -117,7 +117,7 @@ async function runExamples() {
     // Cancelation
     context.nonceId = NonceId.fromNumber(9)!;
     await submit(
-        context.cancelTransaction(existingAccount, 0, 1)
+        context.cancelTransaction(existingAccount, 0, NonceId.fromNumber(1)!)
     );
 
     // Asset creation
