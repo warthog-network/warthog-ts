@@ -151,6 +151,10 @@ export class RoundedFee {
         return RoundedFee.fromWart(wart, ceil);
     }
 
+    public static min(): RoundedFee {
+        return RoundedFee.fromE8(0n, false)!;
+    }
+
     public toWart(): Wart {
         return new Wart(this.E8);
     }
