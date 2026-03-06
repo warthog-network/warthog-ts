@@ -117,19 +117,43 @@ export class TransactionContext {
     }
 
     /**
-     * Create a limit swap transaction (buy or sell token for WART).
+     * Create a limit buy transaction (buy token with WART).
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
-     * @param isBuy - True to buy token with WART, false to sell token for WART
-     * @param amount - Amount in E8 (token units for sell, WART E8 for buy)
+     * @param wartAmount - WART amount to spend
      * @param limit - Limit price as Price object
      * @returns Signed transaction JSON
      */
-    limitSwap(
+    limitBuy(account: Account, assetHash: string, wartAmount: Wart, limit: Price): TransactionJson {
+        return this.limitSwapInternal(account, assetHash, true, wartAmount.E8, limit);
+    }
+
+    /**
+     * Create a limit sell transaction (sell token for WART).
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param tokenAmount - Token amount to sell
+     * @param limit - Limit price as Price object
+     * @returns Signed transaction JSON
+     */
+    limitSell(account: Account, assetHash: string, tokenAmount: Funds, limit: Price): TransactionJson {
+        return this.limitSwapInternal(account, assetHash, false, tokenAmount.amount, limit);
+    }
+
+    /**
+     * Internal limit swap implementation.
+     * @param account - Account signing the transaction
+     * @param assetHash - Asset hash as hex string
+     * @param isBuy - True to buy token with WART, false to sell token for WART
+     * @param amountE8 - Amount in E8 (token units for sell, WART E8 for buy)
+     * @param limit - Limit price as Price object
+     * @returns Signed transaction JSON
+     */
+    private limitSwapInternal(
         account: Account,
         assetHash: string,
         isBuy: boolean,
-        amount: Funds,
+        amountE8: bigint,
         limit: Price
     ): TransactionJson {
         const binary = Buffer.concat([
@@ -140,7 +164,7 @@ export class TransactionContext {
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
             Buffer.from([isBuy ? 1 : 0]),
-            uint64BE(amount.amount),
+            uint64BE(amountE8),
             Buffer.from(limit.toHex(), 'hex'),
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
@@ -153,7 +177,7 @@ export class TransactionContext {
             feeE8: this.fee.E8,
             assetHash,
             isBuy,
-            amountU64: amount.amount,
+            amountU64: amountE8,
             limit: limit.toHex(),
             signature65: sig.signature,
         };
