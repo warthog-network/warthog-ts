@@ -15,7 +15,7 @@ export class TokenPrecision {
      * @param precision - Number of decimal places (0-18)
      * @throws Error if precision is out of range
      */
-    constructor(public precision: number) {
+    constructor(public readonly precision: number) {
         if (precision < 0 || precision > 18) {
             throw new Error("Invalid precision");
         }
