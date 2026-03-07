@@ -232,10 +232,7 @@ import { HDWallet } from 'warthog-ts';
 HDWallet.fromMnemonic('word1 word2 ...')
 
 // Derive account at index
-wallet.deriveAccount(index)
-
-// Derive address at index
-wallet.deriveAddress(index)
+wallet.deriveAccountAtIndex(index)
 ```
 
 ## Transaction Building
