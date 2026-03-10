@@ -361,7 +361,7 @@ export class TransactionContext {
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             supplyU64: totalSupply.amount,
-            precision: precision.precision,
+            decimals: precision.precision,
             name,
             signature65: sig.signature,
         };
