@@ -1,10 +1,10 @@
 import { test, expect } from "bun:test";
-import { Funds, ParsedFunds, TokenPrecision, Wart, CompactFee } from "../types/Funds";
+import { Funds, ParsedFunds, TokenDecimals, Wart, CompactFee } from "../types/Funds";
 
-// Token Precision tests
-test("TokenPrecision rejects invalid precision", () => {
-    expect(() => new TokenPrecision(-1)).toThrow();
-    expect(() => new TokenPrecision(19)).toThrow();
+// Token Decimals tests
+test("TokenDecimals rejects invalid decimals", () => {
+    expect(() => new TokenDecimals(-1)).toThrow();
+    expect(() => new TokenDecimals(19)).toThrow();
 });
 
 // ParsedFunds tests
@@ -49,82 +49,82 @@ test("ParsedFunds.parse invalid inputs", () => {
 
 // Funds tests
 test("Funds.parse valid string input", () => {
-    const f = Funds.parse("1.123", new TokenPrecision(4));
+    const f = Funds.parse("1.123", new TokenDecimals(4));
     expect(f).not.toBeNull();
     expect(f!.amount).toBe(11230n);
 });
-test("Funds.parse invalid due to precision", () => {
-    const f = Funds.parse("1.123", new TokenPrecision(2));
+test("Funds.parse invalid due to decimals", () => {
+    const f = Funds.parse("1.123", new TokenDecimals(2));
     expect(f).toBeNull();
 });
 test("Funds.fromParsedFunds", () => {
     const pf = new ParsedFunds(1123n, 3);
-    const f = Funds.fromParsedFunds(pf, new TokenPrecision(4));
+    const f = Funds.fromParsedFunds(pf, new TokenDecimals(4));
     expect(f).not.toBeNull();
     expect(f!.amount).toBe(11230n);
 });
-test("Funds.fromParsedFunds (uint64 conversion behavior) for parsed 1.123 at precisions 0, 4, 12, 16", () => {
+test("Funds.fromParsedFunds (uint64 conversion behavior) for parsed 1.123 with 0, 4, 12, 16 decimal places", () => {
     const s = "1.123";
     const pf = ParsedFunds.parse(s);
     expect(pf).not.toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
-    const f4 = Funds.fromParsedFunds(pf!, new TokenPrecision(4));
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(0))).toBeNull();
+    const f4 = Funds.fromParsedFunds(pf!, new TokenDecimals(4));
     expect(f4).not.toBeNull();
     expect(f4!.amount).toBe(11230n);
-    const f12 = Funds.fromParsedFunds(pf!, new TokenPrecision(12));
+    const f12 = Funds.fromParsedFunds(pf!, new TokenDecimals(12));
     expect(f12).not.toBeNull();
     expect(f12!.amount).toBe(1123000000000n);
-    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    const f16 = Funds.fromParsedFunds(pf!, new TokenDecimals(16));
     expect(f16).not.toBeNull();
     expect(f16!.amount).toBe(11230000000000000n);
 });
-test("Funds.fromParsedFunds for parsed 101.123000 at precisions 0, 4, 12, 16", () => {
+test("Funds.fromParsedFunds for parsed 101.123000 with 0, 4, 12, 16 decimal places", () => {
     const s = "101.123000";
     const pf = ParsedFunds.parse(s);
     expect(pf).not.toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(4))).toBeNull();
-    const f12 = Funds.fromParsedFunds(pf!, new TokenPrecision(12));
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(0))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(4))).toBeNull();
+    const f12 = Funds.fromParsedFunds(pf!, new TokenDecimals(12));
     expect(f12).not.toBeNull();
     expect(f12!.amount).toBe(101123000000000n);
-    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    const f16 = Funds.fromParsedFunds(pf!, new TokenDecimals(16));
     expect(f16).not.toBeNull();
     expect(f16!.amount).toBe(1011230000000000000n);
 });
-test("Funds.fromParsedFunds for parsed 101.1230001111 at precisions 0, 4, 12, 16", () => {
+test("Funds.fromParsedFunds for parsed 101.1230001111 for 0, 4, 12, 16 decimal places", () => {
     const s = "101.1230001111";
     const pf = ParsedFunds.parse(s);
     expect(pf).not.toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(4))).toBeNull();
-    const f12 = Funds.fromParsedFunds(pf!, new TokenPrecision(12));
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(0))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(4))).toBeNull();
+    const f12 = Funds.fromParsedFunds(pf!, new TokenDecimals(12));
     expect(f12).not.toBeNull();
     expect(f12!.amount).toBe(101123000111100n);
-    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    const f16 = Funds.fromParsedFunds(pf!, new TokenDecimals(16));
     expect(f16).not.toBeNull();
     expect(f16!.amount).toBe(1011230001111000000n);
 });
-test("Funds.fromParsedFunds for parsed 101.00000000000000 at precisions 0, 4, 12, 16", () => {
+test("Funds.fromParsedFunds for parsed 101.00000000000000 for 0, 4, 12, 16 decimal places", () => {
     const s = "101.00000000000000";
     const pf = ParsedFunds.parse(s);
     expect(pf).not.toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(4))).toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(12))).toBeNull();
-    const f16 = Funds.fromParsedFunds(pf!, new TokenPrecision(16));
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(0))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(4))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(12))).toBeNull();
+    const f16 = Funds.fromParsedFunds(pf!, new TokenDecimals(16));
     expect(f16).not.toBeNull();
     expect(f16!.amount).toBe(1010000000000000000n);
 });
-test("Funds.fromParsedFunds for parsed 123123101.001 at precisions 0, 4, 12, 16", () => {
+test("Funds.fromParsedFunds for parsed 123123101.001 for 0, 4, 12, 16 decimal places", () => {
     const s = "123123101.001";
     const pf = ParsedFunds.parse(s);
     expect(pf).not.toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(0))).toBeNull();
-    const f4 = Funds.fromParsedFunds(pf!, new TokenPrecision(4));
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(0))).toBeNull();
+    const f4 = Funds.fromParsedFunds(pf!, new TokenDecimals(4));
     expect(f4).not.toBeNull();
     expect(f4!.amount).toBe(1231231010010n);
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(12))).toBeNull();
-    expect(Funds.fromParsedFunds(pf!, new TokenPrecision(16))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(12))).toBeNull();
+    expect(Funds.fromParsedFunds(pf!, new TokenDecimals(16))).toBeNull();
 });
 
 // Wart tests

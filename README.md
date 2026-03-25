@@ -45,20 +45,20 @@ const isValid = Address.validate('0000000000000000000000000000000000000000de47c9
 console.log('Valid:', isValid);  // true
 ```
 
-### ParsedFunds and TokenPrecision
+### ParsedFunds and TokenDecimals
 
 Parse currency strings into structured data.
 
 ```typescript
-import { ParsedFunds, TokenPrecision, Funds } from 'warthog-ts';
+import { ParsedFunds, TokenDecimals, Funds } from 'warthog-ts';
 
 // Parse a decimal string into its components
 const pf = ParsedFunds.parse('123.45');
 // Result: { val: 12345n, decimalPlaces: 2 }
 
-// Convert to a specific token precision (e.g., WART has 8 decimals)
-const digits = new TokenPrecision(8);  // Validates range 0-18
-const funds = Funds.fromParsedFunds(pf!, digits);
+// Convert to a specific token decimals (e.g., WART has 8 decimals)
+const decimals = new TokenDecimals(8);  // Validates range 0-18
+const funds = Funds.fromParsedFunds(pf!, decimals);
 console.log('Funds:', funds?.amount);  // 12345000000n
 ```
 
@@ -174,7 +174,7 @@ context.transferAsset(
     account,
     'asset-hash-hex',                                 // Asset hash
     recipient,
-    Funds.parse('1000', new TokenPrecision(4))!       // Asset units
+    Funds.parse('1000', new TokenDecimals(4))!       // Asset units
 );
 
 // Liquidity Transfer (transfer liquidity pool tokens)
@@ -197,7 +197,7 @@ context.buy(
 context.sell(
     account,
     'asset-hash-hex',
-    Funds.parse('1000', new TokenPrecision(4))!,      // Asset amount
+    Funds.parse('1000', new TokenDecimals(4))!,      // Asset amount
     price                                             // Price object
 );
 
@@ -205,7 +205,7 @@ context.sell(
 context.depositLiquidity(
     account,
     'asset-hash-hex',
-    Funds.parse('1000', new TokenPrecision(4))!,      // Asset amount
+    Funds.parse('1000', new TokenDecimals(4))!,      // Asset amount
     Wart.fromE8(100000000n)!                          // WART amount
 );
 
@@ -222,9 +222,9 @@ context.cancelTransaction(account, cancelHeight, cancelNonceId);
 // Create Assets
 context.createAssets(
     account,
-    Funds.parse('1000000', new TokenPrecision(10))!,  // Total supply
-    TokenPrecision.WART,                              // Precision
-    'MYTOKEN'                                         // Asset name
+    Funds.parse('1000000', new TokenDecimals(10))!,  // Total supply
+    TokenDecimals.WART,                              // Decimals
+    'MYTOKEN'                                        // Asset name
 );
 ```
 

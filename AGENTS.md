@@ -8,7 +8,7 @@ Warthog is a cryptocurrency. This library provides type-safe primitives for buil
 
 - **MAX_U64** = `0xffffffffffffffffn` (18,446,744,073,709,551,615) - Maximum 64-bit unsigned integer
 - **MAX_U32** = `0xFFFFFFFF` (4,294,967,295) - Maximum 32-bit unsigned integer
-- **WART precision** = 8 decimal places (1 WART = 100,000,000 E8)
+- **WART decimals** = 8 decimal places (1 WART = 100,000,000 E8)
 
 ## Core Types
 
@@ -48,25 +48,25 @@ NonceId.random()
 NonceId.validate(12345)
 ```
 
-### TokenPrecision
+### TokenDecimals
 **File:** `src/types/Funds.ts`
 
-Represents token decimal precision (0-18). WART has precision 8.
+Represents token decimal decimals (0-18). WART has 8 decimal places.
 
 ```typescript
-import { TokenPrecision } from 'warthog-ts';
+import { TokenDecimals } from 'warthog-ts';
 
-// WART precision (8 decimals)
-TokenPrecision.WART
+// WART decimals (8 decimals)
+TokenDecimals.WART
 
-// Custom precision
-new TokenPrecision(4)
+// Custom number of decimals
+new TokenDecimals(4)
 ```
 
 ### ParsedFunds
 **File:** `src/types/Funds.ts`
 
-Parses a decimal string into components without applying precision.
+Parses a decimal string into integer and decimals components.
 
 ```typescript
 import { ParsedFunds } from 'warthog-ts';
@@ -78,12 +78,12 @@ const parsed = ParsedFunds.parse('123.45');
 ### Funds
 **File:** `src/types/Funds.ts`
 
-Represents token amounts with specific precision.
+Represents token amounts with specific number of decimals.
 
 ```typescript
-import { Funds, TokenPrecision } from 'warthog-ts';
+import { Funds, TokenDecimals } from 'warthog-ts';
 
-Funds.parse('123.45', new TokenPrecision(4))  // Returns Funds with amount 123450000n
+Funds.parse('123.45', new TokenDecimals(4))  // Returns Funds with amount 123450000n
 ```
 
 ### Wart
@@ -173,7 +173,7 @@ Represents swap prices with normalized mantissa/exponent format.
 - **Exponent:** 8 bits, range [0, 127] (stored as raw + 63)
 
 ```typescript
-import { Price, TokenPrecision } from 'warthog-ts';
+import { Price, TokenDecimals } from 'warthog-ts';
 
 // Maximum price
 Price.max()
@@ -184,17 +184,18 @@ Price.fromMantissaExponent(mantissa, exponent)
 // Parse from 6-char hex
 Price.fromHex('c0e74d')
 
-// Create from double with token precision
-Price.fromNumberPrecision(1.5, TokenPrecision.WART, false)
+// Create from double with specified number of base asset decimals 
+// quote asset, i.e. WART decimals is always 8 so it is not passed as a parameter
+Price.fromNumberDecimals(1.5, TokenDecimals.WART, false)
 
-// Convert to hex for transaction
+// Convert to hex for transaction generation
 price.toHex()
 
-// Convert to double (raw, without precision adjustment)
+// Convert to double (raw, without decimals adjustment)
 price.toDoubleRaw()
 
-// Convert to double (with precision adjustment)
-price.toDoubleAdjusted(TokenPrecision.WART)
+// Convert to double (with decimals adjustment)
+price.toDoubleAdjusted(TokenDecimals.WART)
 ```
 
 ## Account & Wallets
@@ -257,7 +258,7 @@ context.transferAsset(
     account: Account,
     asset: string,      // Asset hash hex
     recipient: Address,
-    amount: Funds       // Token amount with precision
+    amount: Funds       // Token amount, internally an integer with respect to the assets number of decimals
 )
 
 // Liquidity transfer (transfer liquidity pool tokens)
@@ -265,7 +266,7 @@ context.transferLiquidity(
     account: Account,
     asset: string,      // Asset hash hex
     recipient: Address,
-    units: Liquidity    // Liquidity units
+    units: Liquidity    // Liquidity units, internally an integer with 8 decimal places
 )
 
 // Buy (spend WART to buy tokens)
@@ -273,15 +274,15 @@ context.buy(
     account: Account,
     asset: string,     // Asset hash hex
     wartAmount: Wart,  // WART amount to spend
-    limit: Price       // Limit price
+    limit: Price       // Limit price, internally a floating point representation with respect to the assets number of decimals
 )
 
 // Sell (sell tokens for WART)
 context.sell(
     account: Account,
-    asset: string,     // Asset hash hex
+    asset: string,      // Asset hash hex
     tokenAmount: Funds, // Token amount to sell
-    limit: Price       // Limit price
+    limit: Price        // Limit price, internally a floating point representation with respect to the assets number of decimals
 )
 
 // Deposit liquidity into pool
@@ -310,7 +311,7 @@ context.cancelTransaction(
 context.createAssets(
     account: Account,
     totalSupply: Funds,
-    precision: TokenPrecision,
+    decimals: TokenDecimals,
     name: string
 )
 ```

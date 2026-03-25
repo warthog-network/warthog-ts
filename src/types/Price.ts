@@ -3,18 +3,18 @@ const MAX_MANTISSA = 0xFFFF; // 0xFFFF - maximum mantissa (16 bits)
 const MAX_EXPONENT = 0xFF;   // 0xFF - maximum exponent (8 bits)
 
 import { frexp } from '../util/frexp';
-import { TokenPrecision } from './Funds';
-export { TokenPrecision };
+import { TokenDecimals } from './Funds';
+export { TokenDecimals };
 
 /**
  * Represents a swap price in normalized mantissa/exponent format.
  * - Mantissa: 16 bits, must be in range [0x8000, 0xFFFF] (high bit set for normalization)
  * - Exponent: 8 bits, stored with offset +63 internally to map to range [0, 127]
- * The price is agnostic to any token precision so if it shall be applied
- * to a specific market, the number of decimals of the involved token traded is relevant
- * for construction and printing (to double) of this representation.
+ * The price is interpreted as a qutient of the base and quote amount *integers*, i.e. when
+ * creating or printing this price representation, one must account for the number of 
+ * decimals of the involved base asset traded. 
  * 
- * Used for limit orders and price representation in swap transactions.
+ * Used in limit swap transactions.
  */
 export class Price {
     private constructor(
@@ -68,7 +68,7 @@ export class Price {
     }
 
     /**
-     * Convert price to raw double (without precision adjustment).
+     * Convert price to raw double (without decimals adjustment).
      * @returns Price as double (mantissa * 2^exponent2)
      */
     public toDoubleRaw(): number {
@@ -77,23 +77,25 @@ export class Price {
     }
 
     /**
-     * Convert price to double adjusted for token precision.
-     * @param prec - Token precision of the traded asset
-     * @returns Price as double with precision adjustment applied
+     * Convert price to double corrected for asset decimals. In Warthog, every
+     * market is with respect to WART as quote asset, which always has 8 decimals
+     * so we only need to pass the base, i.e. asset decimals.
+     * @param dec - Number decimal places of the traded asset
+     * @returns Price as double with decimal places adjustment applied
      */
-    public toDoubleAdjusted(prec: TokenPrecision): number {
-        // Compute double price respecting the asset precision
-        const b10e = this.base10_precision_exponent(prec);
+    public toDoubleAdjusted(dec: TokenDecimals): number {
+        // Compute double price respecting the asset decimals
+        const b10e = this.base10_decimals_exponent(dec);
         return this.toDoubleRaw() * Math.pow(10, -b10e);
     }
 
     /**
-     * Calculate base-10 precision exponent for adjustment.
-     * @param prec - Token precision of the traded asset
-     * @returns Difference between WART precision and token precision
+     * Calculate base-10 exponent for decimals adjustment.
+     * @param dec - Number of decimals of the traded asset
+     * @returns Difference between WART decimals (8) and asset decimals
      */
-    private base10_precision_exponent(prec: TokenPrecision): number {
-        return TokenPrecision.WART.precision - prec.precision;
+    private base10_decimals_exponent(dec: TokenDecimals): number {
+        return TokenDecimals.WART.decimals - dec.decimals;
     }
 
     /**
@@ -111,24 +113,24 @@ export class Price {
     }
 
     /**
-     * Create Price from a number and token precision.
+     * Create Price from a number and given decimals of the base asset.
      * This is the recommended factory method for users.
      * @param d - Price as decimal number
-     * @param basePrec - Token precision of the traded asset
+     * @param baseDecimals - Number of decimals of the traded asset
      * @param ceil - If true, round up; otherwise round down
      * @returns Price instance if valid, null otherwise
      */
-    public static fromNumberPrecision(d: number, basePrec: TokenPrecision, ceil: boolean = false): Price | null {
-        const adjusted = d * Math.pow(10, 8 - basePrec.precision);
+    public static fromNumberDecimals(d: number, baseDecimals: TokenDecimals, ceil: boolean = false): Price | null {
+        const adjusted = d * Math.pow(10, 8 - baseDecimals.decimals);
         return Price.fromDoubleInternal(adjusted, ceil);
     }
 
     // This factory method should not be used by library users as it may be easily misused.
     // Warthog needs to specify the price in normalized form and this normalization depends
-    // on the intended price AND the precision of the token that is traded. 
+    // on the intended price AND the decimals of the asset that is traded. 
     // Warthog prices are with respect to the ratio of the raw 64 bit unsinged amounts of
     // WART and the traded token. Therefore, to normalize the price properly, users should
-    // call the `fromNumberPrecision` method.
+    // call the `fromNumberDecimals` method.
     public static fromDoubleInternal(d: number, ceil: boolean = false): Price | null {
         if (d <= 0 || !Number.isFinite(d)) {
             return null;

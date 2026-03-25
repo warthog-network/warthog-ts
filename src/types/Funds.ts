@@ -1,23 +1,23 @@
 export const MAX_U64 = 0xffffffffffffffffn;
 
 /**
- * Represents token decimal precision (number of decimal places).
+ * Represents token's number of decimal place).
  * Valid range: 0-18. WART uses 8 decimal places.
  */
-export class TokenPrecision {
-    /** Pre-configured WART precision (8 decimals) */
-    public static readonly WART = new TokenPrecision(8);
-    /** Pre-configured Liquidity precision (8 decimals) */
-    public static readonly LIQUIDITY = new TokenPrecision(8);
+export class TokenDecimals {
+    /** Pre-configured WART decimals (8 decimals) */
+    public static readonly WART = new TokenDecimals(8);
+    /** Pre-configured Liquidity decimals (8 decimals) */
+    public static readonly LIQUIDITY = new TokenDecimals(8);
 
     /**
-     * Create a TokenPrecision instance.
-     * @param precision - Number of decimal places (0-18)
-     * @throws Error if precision is out of range
+     * Create a TokenDecimals instance.
+     * @param decimals - Number of decimal places (0-18)
+     * @throws Error if decimals is out of range
      */
-    constructor(public readonly precision: number) {
-        if (precision < 0 || precision > 18) {
-            throw new Error("Invalid precision");
+    constructor(public readonly decimals: number) {
+        if (decimals < 0 || decimals > 18) {
+            throw new Error("Invalid decimals");
         }
     }
 }
@@ -81,17 +81,17 @@ export class ParsedFunds {
 }
 
 /**
- * Convert ParsedFunds to a value at the given precision.
+ * Convert ParsedFunds to a value for the given number of decimal places.
  * @param fd - Parsed funds to convert
- * @param precision - Target precision (decimal places)
+ * @param decimals - Target decimal places
  * @returns Value as bigint or null if invalid
  */
-function valueFrom(fd: ParsedFunds, precision: number): bigint | null {
-    if (fd.decimalPlaces > precision) {
+function valueFrom(fd: ParsedFunds, decimals: number): bigint | null {
+    if (fd.decimalPlaces > decimals) {
         return null;
     }
 
-    const zeros = precision - fd.decimalPlaces;
+    const zeros = decimals - fd.decimalPlaces;
     let value = fd.val;
 
     for (let i = 0; i < zeros; i++) {
@@ -105,7 +105,7 @@ function valueFrom(fd: ParsedFunds, precision: number): bigint | null {
 }
 
 /**
- * Represents token amounts with specific precision.
+ * Represents token amounts with specific number of decimals.
  */
 export class Funds {
     amount: bigint;
@@ -117,23 +117,23 @@ export class Funds {
     /**
      * Parse a decimal string to Funds.
      * @param string - Decimal string (e.g., "123.45")
-     * @param digits - Token precision
+     * @param decimals - Token decimals
      * @returns Funds or null if invalid
      */
-    public static parse(string: string, digits: TokenPrecision): Funds | null {
+    public static parse(string: string, decimals: TokenDecimals): Funds | null {
         const fd = ParsedFunds.parse(string);
         if (fd === null) return null;
-        return Funds.fromParsedFunds(fd, digits);
+        return Funds.fromParsedFunds(fd, decimals);
     }
     
     /**
-     * Convert ParsedFunds to Funds at given precision.
+     * Convert ParsedFunds to Funds with specific number of decimals.
      * @param fd - Parsed funds
-     * @param digits - Token precision
+     * @param decimals - Token decimals
      * @returns Funds or null if invalid
      */
-    public static fromParsedFunds(fd: ParsedFunds, digits: TokenPrecision): Funds | null {
-        const value = valueFrom(fd, digits.precision);
+    public static fromParsedFunds(fd: ParsedFunds, decimals: TokenDecimals): Funds | null {
+        const value = valueFrom(fd, decimals.decimals);
         if (value === null) return null;
         return new Funds(value);
     }
@@ -167,7 +167,7 @@ export class Wart {
      * @returns Wart or null if invalid
      */
     public static fromParsedFunds(fd: ParsedFunds): Wart | null {
-        const value = valueFrom(fd, TokenPrecision.WART.precision);
+        const value = valueFrom(fd, TokenDecimals.WART.decimals);
         if (value === null) return null;
         return new Wart(value);
     }
@@ -223,7 +223,7 @@ export class Liquidity {
      * @returns Liquidity or null if invalid
      */
     public static fromParsedFunds(fd: ParsedFunds): Liquidity | null {
-        const value = valueFrom(fd, TokenPrecision.LIQUIDITY.precision);
+        const value = valueFrom(fd, TokenDecimals.LIQUIDITY.decimals);
         if (value === null) return null;
         return new Liquidity(value);
     }

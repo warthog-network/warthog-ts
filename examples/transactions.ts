@@ -4,7 +4,7 @@ import { WarthogApi } from '../src/types/Api';
 import { TransactionContext, TransactionJson } from '../src/types/TransactionContext';
 import { NonceId } from '../src/types/NonceId';
 import { Price } from '../src/types/Price';
-import { Funds, Liquidity, RoundedFee, TokenPrecision, Wart } from '../src/types/Funds';
+import { Funds, Liquidity, RoundedFee, TokenDecimals, Wart } from '../src/types/Funds';
 
 const account = Account.fromRandom();
 
@@ -52,7 +52,7 @@ async function runExamples() {
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
             Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!,
-            Funds.parse('1000', TokenPrecision.WART)!
+            Funds.parse('1000', TokenDecimals.WART)!
         )
     );
 
@@ -69,7 +69,10 @@ async function runExamples() {
 
     // Limit buy (spend WART to buy tokens)
     context.nonceId = NonceId.fromNumber(5)!;
-    const price = Price.fromNumberPrecision(1.0, TokenPrecision.WART, false)!;
+    // Note: The number of decimals (4) must be obtained from the API's token information
+    // for the asset being traded. Different tokens have different number of decimals.
+    const dec4 = new TokenDecimals(4);
+    const price = Price.fromNumberDecimals(1.0, dec4, false)!;
     console.log('Price hex:', price.toHex());
     await submit(
         context.buy(
@@ -82,13 +85,11 @@ async function runExamples() {
 
     // Limit sell (sell tokens for WART)
     context.nonceId = NonceId.fromNumber(6)!;
-    // Note: The precision (4) must be obtained from the API's token information
-    // for the asset being traded. Different tokens have different precisions.
     await submit(
         context.sell(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
-            Funds.parse('1000', new TokenPrecision(4))!,
+            Funds.parse('1000', dec4)!,
             price
         )
     );
@@ -99,7 +100,7 @@ async function runExamples() {
         context.depositLiquidity(
             existingAccount,
             'f45b113119c7f7c000234f1090d5d181ab60b8b24526f1edd2f563aa1ca329f2',
-            Funds.parse('1000', new TokenPrecision(4))!,
+            Funds.parse('1000', dec4)!,
             Wart.fromE8(100000000n)!
         )
     );
@@ -122,9 +123,9 @@ async function runExamples() {
 
     // Asset creation
     context.nonceId = NonceId.fromNumber(10)!;
-    const prec5 = new TokenPrecision(5); // new asset with precision 5
+    const dec5 = new TokenDecimals(5); // new asset with 5 decimal digits
     await submit(
-        context.createAssets(existingAccount, Funds.parse('10000', prec5)!, prec5, 'TOK2')
+        context.createAssets(existingAccount, Funds.parse('10000', dec5)!, dec5, 'TOK2')
     );
 }
 

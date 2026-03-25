@@ -3,7 +3,7 @@ import { Account } from './Account';
 import { Address } from './Address';
 import { NonceId } from './NonceId';
 import { Price } from './Price';
-import { Funds, Liquidity, RoundedFee, TokenPrecision, Wart } from './Funds';
+import { Funds, Liquidity, RoundedFee, TokenDecimals, Wart } from './Funds';
 
 const UINT32_BE_BYTES = 4;
 const UINT64_BE_BYTES = 8;
@@ -330,14 +330,14 @@ export class TransactionContext {
      * Create an asset creation transaction (create a new token).
      * @param account - Account signing the transaction
      * @param totalSupply - Total supply in token units
-     * @param precision - Token decimal precision (0-18)
+     * @param decimals - Token decimal places (0-18)
      * @param name - Token name (max 5 ASCII characters)
      * @returns Signed transaction JSON
      */
     createAssets(
         account: Account,
         totalSupply: Funds,
-        precision: TokenPrecision,
+        decimals: TokenDecimals,
         name: string
     ): TransactionJson {
         const nameBuffer = Buffer.alloc(5);
@@ -349,7 +349,7 @@ export class TransactionContext {
             Buffer.alloc(3),
             uint64BE(this.fee.E8),
             uint64BE(totalSupply.amount),
-            Buffer.from([precision.precision]),
+            Buffer.from([decimals.decimals]),
             nameBuffer,
         ]);
         const hash = createHash('sha256').update(binary).digest('hex');
@@ -361,7 +361,7 @@ export class TransactionContext {
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             supplyU64: totalSupply.amount,
-            decimals: precision.precision,
+            decimals: decimals.decimals,
             name,
             signature65: sig.signature,
         };
