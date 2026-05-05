@@ -27,6 +27,7 @@
         "@types/bun": "latest",
         "@types/elliptic": "^6.4.18",
         "ethers": "^6.16.0",
+        "rimraf": "^6.0.0",
         "typescript": "^5"
     },
     "peerDependencies": {
