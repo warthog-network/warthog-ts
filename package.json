@@ -1,5 +1,5 @@
 {
-    "name": "@warthog-network/warthog-ts",
+    "name": "warthog-ts",
     "repository": "github:warthog-network/warthog-ts",
     "version": "0.1.20",
     "license": "MIT",
