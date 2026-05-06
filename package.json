@@ -1,5 +1,5 @@
 {
-    "name": "warthog-ts",
+    "name": "@warthog-network/warthog-ts",
     "version": "0.1.7",
     "license": "MIT",
     "description": "a TypeScript library for the Warthog cryptocurrency",
