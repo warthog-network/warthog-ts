@@ -47,8 +47,10 @@ export type ApiResult<T> = ApiSuccess<T> | ApiError;
  * Chain head data containing pin information.
  */
 export interface ChainHeadData {
-    pinHash: string;
-    pinHeight: number;
+    chainHead: {
+        pinHash: string;
+        pinHeight: number;
+    };
 }
 
 /**
@@ -155,7 +157,7 @@ export class WarthogApi {
         if (!headResult.success) {
             throw new Error(headResult.error);
         }
-        const { pinHash, pinHeight } = headResult.data;
+        const { pinHash, pinHeight } = headResult.data.chainHead;
         return new TransactionContext({ pinHash, pinHeight }, fee, nonceId);
     }
 }
