@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import hash from 'hash.js';
 import { Account } from './Account';
 import { Address } from './Address';
 import { NonceId } from './NonceId';
@@ -59,8 +59,8 @@ export class TransactionContext {
             addressToBytes(toAddr.hex),
             uint64BE(wart.E8),
         ]);
-        const hash = createHash('sha256').update(binary).digest('hex');
-        const sig = account.sign(hash);
+        const hashHex = hash.sha256().update(binary).digest('hex');
+        const sig = account.sign(hashHex);
 
         return {
             type: 'wartTransfer',
@@ -134,8 +134,8 @@ export class TransactionContext {
             addressToBytes(toAddr.hex),
             uint64BE(amountE8),
         ]);
-        const hash = createHash('sha256').update(binary).digest('hex');
-        const sig = account.sign(hash);
+        const hashHex = hash.sha256().update(binary).digest('hex');
+        const sig = account.sign(hashHex);
 
         return {
             type: 'tokenTransfer',
@@ -201,8 +201,8 @@ export class TransactionContext {
             uint64BE(amountE8),
             Buffer.from(limit.toHex(), 'hex'),
         ]);
-        const hash = createHash('sha256').update(binary).digest('hex');
-        const sig = account.sign(hash);
+        const hashHex = hash.sha256().update(binary).digest('hex');
+        const sig = account.sign(hashHex);
 
         return {
             type: 'limitSwap',
@@ -241,8 +241,8 @@ export class TransactionContext {
             uint64BE(tokenAmount.amount),
             uint64BE(wart.E8),
         ]);
-        const hash = createHash('sha256').update(binary).digest('hex');
-        const sig = account.sign(hash);
+        const hashHex = hash.sha256().update(binary).digest('hex');
+        const sig = account.sign(hashHex);
 
         return {
             type: 'liquidityDeposit',
@@ -277,8 +277,8 @@ export class TransactionContext {
             hashToBytes(assetHash),
             uint64BE(units.E8),
         ]);
-        const hash = createHash('sha256').update(binary).digest('hex');
-        const sig = account.sign(hash);
+        const hashHex = hash.sha256().update(binary).digest('hex');
+        const sig = account.sign(hashHex);
 
         return {
             type: 'liquidityWithdrawal',
@@ -312,8 +312,8 @@ export class TransactionContext {
             uint32BE(cancelHeight),
             uint32BE(cancelNonceId.value),
         ]);
-        const hash = createHash('sha256').update(binary).digest('hex');
-        const sig = account.sign(hash);
+        const hashHex = hash.sha256().update(binary).digest('hex');
+        const sig = account.sign(hashHex);
 
         return {
             type: 'cancelation',
@@ -352,8 +352,8 @@ export class TransactionContext {
             Buffer.from([decimals.decimals]),
             nameBuffer,
         ]);
-        const hash = createHash('sha256').update(binary).digest('hex');
-        const sig = account.sign(hash);
+        const hashHex = hash.sha256().update(binary).digest('hex');
+        const sig = account.sign(hashHex);
 
         return {
             type: 'assetCreation',
