@@ -16,13 +16,13 @@ test("Price roundtrip fromDoubleInternal -> toDoubleRaw", () => {
     const testRoundtrip = (input: number) => {
         const price = Price.fromDoubleInternal(input);
         expect(price).not.toBeNull();
-        
+
         const output = price!.toDoubleRaw();
-        
+
         console.log(`Input: ${input}, Output: ${output}, Diff: ${(Math.abs(1 - output / input) * 100).toFixed(4)}%`);
         expect(Math.abs(1 - output / input) * 100).toBeLessThan(0.01);
     };
-    
+
     testRoundtrip(0.0000001354);
     testRoundtrip(0.000001345);
     testRoundtrip(0.000016574);
@@ -41,4 +41,14 @@ test("Price roundtrip fromDoubleInternal -> toDoubleRaw", () => {
     testRoundtrip(9582389);
     testRoundtrip(190123900);
     testRoundtrip(9230942914);
+});
+
+test("Price.fromHex enforces exponent range", () => {
+    // Internal exponent must be in [0, 127]. The high bit of the
+    // exponent byte encodes values outside that range, which must be
+    // rejected to stay consistent with fromMantissaExponent.
+    expect(Price.fromHex("ffff7f")).not.toBeNull();
+    expect(Price.fromHex("ffff80")).toBeNull();
+    expect(Price.fromHex("ffffff")).toBeNull();
+    expect(Price.fromHex("c0e74d")).not.toBeNull();
 });

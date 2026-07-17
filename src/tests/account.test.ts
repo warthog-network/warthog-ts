@@ -36,5 +36,7 @@ test("Address.validate returns false for wrong length", () => {
 });
 
 test("Address.validate returns false for non-hex string", () => {
-    expect(Address.validate("g1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2")).toBe(false);
+    // 48-character string with a non-hex character ('g') at the start.
+    // Now correctly exercises the hex-decoding path, not just the length check.
+    expect(Address.validate("g1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d20000")).toBe(false);
 });

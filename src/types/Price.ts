@@ -1,6 +1,5 @@
 const MIN_MANTISSA = 0x8000; // 0x8000 - minimum normalized mantissa (high bit set)
 const MAX_MANTISSA = 0xFFFF; // 0xFFFF - maximum mantissa (16 bits)
-const MAX_EXPONENT = 0xFF;   // 0xFF - maximum exponent (8 bits)
 
 import { frexp } from '../util/frexp';
 import { TokenDecimals } from './Funds';
@@ -180,7 +179,7 @@ export class Price {
         const mantissa = parsed >> 8;
         const exponent = parsed & 0xFF;
 
-        if (mantissa > MAX_MANTISSA || exponent > MAX_EXPONENT) {
+        if (!Price.isExponent(exponent) || !Price.isMantissa(mantissa)) {
             return null;
         }
 

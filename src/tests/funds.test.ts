@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { Funds, ParsedFunds, TokenDecimals, Wart, CompactFee } from "../types/Funds";
+import { Funds, Liquidity, ParsedFunds, TokenDecimals, Wart, CompactFee } from "../types/Funds";
 
 // Token Decimals tests
 test("TokenDecimals rejects invalid decimals", () => {
@@ -135,6 +135,14 @@ test("Wart.parse valid input", () => {
 });
 test("Wart.parse invalid due to too many decimals", () => {
     expect(Wart.parse("1.123456789")).toBeNull();
+});
+test("Wart.fromE8 rejects negative values", () => {
+    expect(Wart.fromE8(-1n)).toBeNull();
+    expect(Wart.fromE8(-100000000n)).toBeNull();
+});
+test("Liquidity.fromE8 rejects negative values", () => {
+    expect(Liquidity.fromE8(-1n)).toBeNull();
+    expect(Liquidity.fromE8(-100n)).toBeNull();
 });
 
 test("CompactFee.fromWart amount=0 returns smallest fee", () => {

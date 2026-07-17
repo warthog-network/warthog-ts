@@ -175,10 +175,10 @@ export class Wart {
     /**
      * Create Wart from E8 value.
      * @param E8 - Amount in E8 (1 WART = 100,000,000 E8)
-     * @returns Wart or null if invalid (exceeds MAX_U64)
+     * @returns Wart or null if invalid (negative or exceeds MAX_U64)
      */
     public static fromE8(E8: bigint): Wart | null {
-        if (E8 > MAX_U64) {
+        if (E8 < 0n || E8 > MAX_U64) {
             return null;
         }
         return new Wart(E8);
@@ -231,10 +231,10 @@ export class Liquidity {
     /**
      * Create Liquidity from E8 value.
      * @param E8 - Amount in E8 (1 liquidity = 100,000,000 E8)
-     * @returns Liquidity or null if invalid (exceeds MAX_U64)
+     * @returns Liquidity or null if invalid (negative or exceeds MAX_U64)
      */
     public static fromE8(E8: bigint): Liquidity | null {
-        if (E8 > MAX_U64) {
+        if (E8 < 0n || E8 > MAX_U64) {
             return null;
         }
         return new Liquidity(E8);
