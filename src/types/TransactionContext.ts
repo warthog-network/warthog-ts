@@ -1,4 +1,3 @@
-import hash from 'hash.js';
 import { Account } from './Account';
 import { Address } from './Address';
 import { NonceId } from './NonceId';
@@ -59,8 +58,7 @@ export class TransactionContext {
             addressToBytes(toAddr.hex),
             uint64BE(wart.E8),
         ]);
-        const hashHex = hash.sha256().update(binary).digest('hex');
-        const sig = account.sign(hashHex);
+        const sig = account.signBytes(binary);
 
         return {
             type: 'wartTransfer',
@@ -134,8 +132,7 @@ export class TransactionContext {
             addressToBytes(toAddr.hex),
             uint64BE(amountE8),
         ]);
-        const hashHex = hash.sha256().update(binary).digest('hex');
-        const sig = account.sign(hashHex);
+        const sig = account.signBytes(binary);
 
         return {
             type: 'tokenTransfer',
@@ -201,8 +198,7 @@ export class TransactionContext {
             uint64BE(amountE8),
             Buffer.from(limit.toHex(), 'hex'),
         ]);
-        const hashHex = hash.sha256().update(binary).digest('hex');
-        const sig = account.sign(hashHex);
+        const sig = account.signBytes(binary);
 
         return {
             type: 'limitSwap',
@@ -241,8 +237,7 @@ export class TransactionContext {
             uint64BE(tokenAmount.amount),
             uint64BE(wart.E8),
         ]);
-        const hashHex = hash.sha256().update(binary).digest('hex');
-        const sig = account.sign(hashHex);
+        const sig = account.signBytes(binary);
 
         return {
             type: 'liquidityDeposit',
@@ -277,8 +272,7 @@ export class TransactionContext {
             hashToBytes(assetHash),
             uint64BE(units.E8),
         ]);
-        const hashHex = hash.sha256().update(binary).digest('hex');
-        const sig = account.sign(hashHex);
+        const sig = account.signBytes(binary);
 
         return {
             type: 'liquidityWithdrawal',
@@ -312,8 +306,7 @@ export class TransactionContext {
             uint32BE(cancelHeight),
             uint32BE(cancelNonceId.value),
         ]);
-        const hashHex = hash.sha256().update(binary).digest('hex');
-        const sig = account.sign(hashHex);
+        const sig = account.signBytes(binary);
 
         return {
             type: 'cancelation',
@@ -352,8 +345,7 @@ export class TransactionContext {
             Buffer.from([decimals.decimals]),
             nameBuffer,
         ]);
-        const hashHex = hash.sha256().update(binary).digest('hex');
-        const sig = account.sign(hashHex);
+        const sig = account.signBytes(binary);
 
         return {
             type: 'assetCreation',

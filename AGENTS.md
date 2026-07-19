@@ -214,12 +214,33 @@ Account.fromRandom()
 // Load from private key hex
 Account.fromPrivateKeyHex('private-key-hex')
 
-// Get address
-account.getAddress()  // Returns Address
+// Public fields (no getters)
+account.address           // Address
+account.privateKeyHex     // 64-char hex
+account.publicKeyHex      // 66-char compressed pubkey hex
 
-// Get private key
-account.getPrivateKeyHex()
+// Sign arbitrary bytes (UTF-8 string or Uint8Array).
+// Internally SHA-256's the message — same hashing scheme as transactions.
+const sig = account.signBytes('hello world')
+// sig: { r: string; s: string; recid: number; signature: string }
+// sig.signature is the 130-char hex (r || s || recid) wire format.
+
+// Recover the public key that produced a signature.
+const pubkeyHex = Account.recoverPublicKey('hello world', sig)
+
+// Recover the Warthog address that produced a signature.
+const addr = Account.recoverAddress('hello world', sig)
+// addr.hex matches the signer
+
+// Both recovery methods accept either a Signature65 object or the
+// 130-char hex `signature` string.
 ```
+
+Message signing has **no domain separator** from transaction signing —
+both produce the same wire format. Structure your messages yourself
+(e.g. JSON envelope with a `domain` field) if you need intent
+separation. The message-signing wire format is provisional and may
+gain a separator in a future minor version before any wallet adopts it.
 
 ### HDWallet
 **File:** `src/types/HDWallet.ts`

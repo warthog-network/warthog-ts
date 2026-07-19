@@ -77,13 +77,74 @@ export class Account {
     }
 
     /**
-     * Sign a hash for Warthog transaction
-     * @param hash - 32-byte hex string to sign
+     * Hash arbitrary bytes with SHA-256 and sign the digest with the account's
+     * private key. The signature is produced with the same secp256k1
+     * configuration as transaction signing (low-s / canonical, recovery id).
+     *
+     * Note: this function does not add a domain separator between
+     * "message signatures" and "transaction signatures" — both produce the
+     * same wire format. Structure your messages yourself if you need intent
+     * separation (e.g. JSON envelope with a `domain` field).
+     *
+     * @param message - UTF-8 string or raw bytes to sign
      * @returns 65-byte signature (r + s + recid)
      */
-    public sign(hash: string): Signature65 {
+    public signBytes(message: string | Uint8Array): Signature65 {
+        const bytes = messageToBytes(message);
+        const digest = Buffer.from(ethers.sha256(bytes).slice(2), "hex");
+        return this._signHash(digest);
+    }
+
+    /**
+     * Recover the compressed public key (hex) that produced the given
+     * signature for the given message.
+     *
+     * @param message - UTF-8 string or raw bytes that were signed
+     * @param signature - `Signature65` object, or 130-char hex string
+     *   (`r || s || recid`)
+     * @returns Compressed public key as 66-char hex string
+     */
+    public static recoverPublicKey(
+        message: string | Uint8Array,
+        signature: Signature65 | string
+    ): string {
+        const bytes = messageToBytes(message);
+        const digest = Buffer.from(ethers.sha256(bytes).slice(2), "hex");
+        const { r, s, recid } = normalizeSignature(signature);
+        const point = ecInstance.recoverPubKey(digest, { r, s }, recid);
+        return point.encodeCompressed("hex");
+    }
+
+    /**
+     * Recover the Warthog address that produced the given signature for the
+     * given message. Derived from the recovered public key via the same
+     * `RIPEMD-160(SHA-256(pubkey)) + 4-byte checksum` pipeline the protocol
+     * uses for addresses.
+     *
+     * @param message - UTF-8 string or raw bytes that were signed
+     * @param signature - `Signature65` object, or 130-char hex string
+     *   (`r || s || recid`)
+     * @returns The Warthog address that produced the signature
+     */
+    public static recoverAddress(
+        message: string | Uint8Array,
+        signature: Signature65 | string
+    ): Address {
+        const publicKeyHex = Account.recoverPublicKey(message, signature);
+        const pubkeyBytes = Buffer.from(publicKeyHex, "hex");
+        const sha = ethers.sha256(pubkeyBytes).slice(2);
+        const ripe = ethers.ripemd160(Buffer.from(sha, "hex")).slice(2);
+        const checksum = ethers.sha256(Buffer.from(ripe, "hex")).slice(2, 10);
+        return Address.fromHex(ripe + checksum)!;
+    }
+
+    /**
+     * Internal: sign a 32-byte digest buffer. Shared by `signBytes` and any
+     * other internal callers that have already computed the digest.
+     */
+    private _signHash(hashBuffer: Buffer): Signature65 {
         const keyPair = ecInstance.keyFromPrivate(this.privateKeyHex, "hex");
-        const signature = ecInstance.sign(Buffer.from(hash, "hex"), keyPair, { canonical: true });
+        const signature = ecInstance.sign(hashBuffer, keyPair, { canonical: true });
 
         const r = signature.r.toString(16).padStart(64, "0");
         const s = signature.s.toString(16).padStart(64, "0");
@@ -96,4 +157,44 @@ export class Account {
             signature: r + s + recid.toString(16).padStart(2, "0"),
         };
     }
+}
+
+/**
+ * Convert a public `string | Uint8Array` message into a Buffer for hashing.
+ * Strings are encoded as UTF-8.
+ */
+function messageToBytes(message: string | Uint8Array): Buffer {
+    if (typeof message === "string") {
+        return Buffer.from(message, "utf8");
+    }
+    return Buffer.from(message);
+}
+
+/**
+ * Normalize a `Signature65` object or 130-char hex string into the
+ * `{r, s, recid}` shape expected by `elliptic`'s recover API.
+ */
+function normalizeSignature(
+    sig: Signature65 | string
+): { r: string; s: string; recid: number } {
+    if (typeof sig === "string") {
+        if (sig.length !== 130 || !/^[0-9a-fA-F]+$/.test(sig)) {
+            throw new Error(
+                "signature string must be 130 hex chars (r || s || recid)"
+            );
+        }
+        const recid = parseInt(sig.slice(128, 130), 16);
+        if (recid < 0 || recid > 3) {
+            throw new Error(`signature recid must be in {0, 1, 2, 3}, got ${recid}`);
+        }
+        return {
+            r: sig.slice(0, 64),
+            s: sig.slice(64, 128),
+            recid,
+        };
+    }
+    if (typeof sig.r !== "string" || typeof sig.s !== "string" || typeof sig.recid !== "number") {
+        throw new Error("Signature65 must have r (string), s (string), recid (number)");
+    }
+    return { r: sig.r, s: sig.s, recid: sig.recid };
 }
