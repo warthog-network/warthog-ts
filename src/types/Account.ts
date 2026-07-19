@@ -81,11 +81,6 @@ export class Account {
      * private key. The signature is produced with the same secp256k1
      * configuration as transaction signing (low-s / canonical, recovery id).
      *
-     * Note: this function does not add a domain separator between
-     * "message signatures" and "transaction signatures" — both produce the
-     * same wire format. Structure your messages yourself if you need intent
-     * separation (e.g. JSON envelope with a `domain` field).
-     *
      * @param message - UTF-8 string or raw bytes to sign
      * @returns 65-byte signature (r + s + recid)
      */

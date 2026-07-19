@@ -236,12 +236,6 @@ const addr = Account.recoverAddress('hello world', sig)
 // 130-char hex `signature` string.
 ```
 
-Message signing has **no domain separator** from transaction signing —
-both produce the same wire format. Structure your messages yourself
-(e.g. JSON envelope with a `domain` field) if you need intent
-separation. The message-signing wire format is provisional and may
-gain a separator in a future minor version before any wallet adopts it.
-
 ### HDWallet
 **File:** `src/types/HDWallet.ts`
 
