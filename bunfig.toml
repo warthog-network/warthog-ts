@@ -1,0 +1,10 @@
+# `tsc -p tsconfig.build.json` emits the test files into `dist/` alongside the
+# library. Scoping the test root to `src/` stops `bun test` from discovering the
+# stale compiled copies in `dist/src/tests/` as well, which otherwise run every
+# test twice — and report the compiled copy of an *old* test, so a genuine
+# failure can look like a pass.
+#
+# If tests are ever added outside `src/`, move this root or they will be
+# silently skipped.
+[test]
+root = "./src"

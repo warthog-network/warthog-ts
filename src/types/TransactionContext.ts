@@ -3,14 +3,10 @@ import { Address } from './Address';
 import { NonceId } from './NonceId';
 import { Price } from './Price';
 import { Funds, Liquidity, RoundedFee, TokenDecimals, Wart } from './Funds';
+import { ChainPin } from './ChainPin';
 
 const UINT32_BE_BYTES = 4;
 const UINT64_BE_BYTES = 8;
-
-export interface ChainPin {
-    pinHash: string;
-    pinHeight: number;
-}
 
 /**
  * JSON representation of a signed transaction for submission to Warthog nodes.

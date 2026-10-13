@@ -2,6 +2,7 @@ import { TransactionContext } from './TransactionContext';
 import type { TransactionJson } from './TransactionContext';
 import { NonceId } from './NonceId';
 import { RoundedFee } from './Funds';
+import { ChainPin, chainHeadSource } from './ChainPin';
 
 /**
  * Known Warthog network nodes.
@@ -44,13 +45,67 @@ export type ApiError = {
 export type ApiResult<T> = ApiSuccess<T> | ApiError;
 
 /**
- * Chain head data containing pin information.
+ * Which generation of `/chain/head` JSON a node returns.
+ *
+ * Both generations serialize the same C++ type, `Head { ChainHead chainHead;
+ * bool synced; }`. Only the serializer differs:
+ *
+ *   V1 — core/master and core/dev. A hand-written `to_json(API::Head&)`
+ *        (src/node/api/http/json.cpp) flattens ChainHead field-by-field into
+ *        the top level; `synced` stays at the root.
+ *          { hash, height, pinHash, pinHeight, ..., synced }
+ *
+ *   V2 — core/defi (the DeFi branch). Glaze auto-serialization reflects the
+ *        nested struct, so ChainHead is wrapped; `synced` sits beside it.
+ *          { chainHead: { hash, height, pinHash, pinHeight, ... }, synced }
+ *
+ * The two are NOT interchangeable. Both carry the same fields, so validation
+ * is identical — only the location differs.
  */
-export interface ChainHeadData {
-    chainHead: {
-        pinHash: string;
-        pinHeight: number;
-    };
+export type WarthogApiVersion = 'v1' | 'v2';
+
+/**
+ * A node's view of the chain head, normalized across API generations.
+ *
+ * V1 returns these fields flat and V2 nests them under `chainHead`; this
+ * always exposes them in one shape. See `WarthogApiVersion`.
+ */
+export class ChainHead {
+    constructor(
+        /** The most recently proposed pin. */
+        public readonly pin: ChainPin,
+        /** Hash of the block at `height`. */
+        public readonly hash: string,
+        /** Tip height. Always >= `pin.pinHeight`. */
+        public readonly height: number,
+        public readonly synced: boolean,
+    ) {}
+
+    /**
+     * Extract the chain head from a `/chain/head` payload.
+     *
+     * @param data - The `data` payload of the response.
+     * @param version - Which API generation `data` came from.
+     * @returns The chain head, or null if the payload does not match `version`.
+     */
+    public static parse(data: unknown, version: WarthogApiVersion): ChainHead | null {
+        const src = chainHeadSource(data, version);
+        const pin = ChainPin.parse(data, version);
+
+        if (!src || !pin || typeof src.hash !== 'string') {
+            return null;
+        }
+
+        const height = Number(src.height);
+        if (!Number.isFinite(height)) {
+            return null;
+        }
+
+        // `synced` sits at the root of the payload in both generations.
+        const synced = Boolean((data as Record<string, unknown>)?.synced);
+
+        return new ChainHead(pin, src.hash, height, synced);
+    }
 }
 
 /**
@@ -70,14 +125,30 @@ export interface RequestOptions {
 }
 
 /**
+ * Client configuration.
+ */
+export interface WarthogApiOptions {
+    /**
+     * Which `/chain/head` shape this node returns. Required — the V1 and V2
+     * payload shapes are not interchangeable.
+     */
+    version: WarthogApiVersion;
+}
+
+/**
  * Client for communicating with Warthog nodes.
  */
 export class WarthogApi {
+    private readonly version: WarthogApiVersion;
+
     /**
      * Create a new API client.
      * @param baseUrl - Base URL of the Warthog node
+     * @param options - Declares which API generation the node speaks
      */
-    constructor(public readonly baseUrl: string) {}
+    constructor(public readonly baseUrl: string, options: WarthogApiOptions) {
+        this.version = options.version;
+    }
 
     /**
      * Make an HTTP request to the API.
@@ -126,11 +197,28 @@ export class WarthogApi {
     }
 
     /**
-     * Get the current chain head (latest pinned block).
-     * @returns Chain head data with pin hash and height
+     * Get the current chain head.
+     *
+     * Normalizes the V1 and V2 payload shapes into a single `ChainHead`.
+     * @returns The chain head, or an error result when the payload does not
+     *   match the declared `version`.
      */
-    async getChainHead(): Promise<ApiResult<ChainHeadData>> {
-        return this.request<ChainHeadData>('/chain/head');
+    async getChainHead(): Promise<ApiResult<ChainHead>> {
+        const result = await this.request<unknown>('/chain/head');
+        if (!result.success) {
+            return result;
+        }
+
+        const head = ChainHead.parse(result.data, this.version);
+        if (!head) {
+            return {
+                success: false,
+                code: -1,
+                error: `Invalid ${this.version} chain head response`,
+            };
+        }
+
+        return { success: true, data: head };
     }
 
     /**
@@ -147,7 +235,7 @@ export class WarthogApi {
 
     /**
      * Create a transaction context for building transactions.
-     * Fetches the current chain head to get the pin hash and height.
+     * Fetches the current chain pin and wraps it.
      * @param fee - Transaction fee
      * @param nonceId - Unique nonce for the transaction
      * @returns TransactionContext ready for building transactions
@@ -157,7 +245,6 @@ export class WarthogApi {
         if (!headResult.success) {
             throw new Error(headResult.error);
         }
-        const { pinHash, pinHeight } = headResult.data.chainHead;
-        return new TransactionContext({ pinHash, pinHeight }, fee, nonceId);
+        return new TransactionContext(headResult.data.pin, fee, nonceId);
     }
 }

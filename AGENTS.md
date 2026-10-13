@@ -414,3 +414,13 @@ Build the library:
 ```bash
 bun run build
 ```
+
+## Publishing
+
+**Do not publish from a local checkout.** `npm publish` is run by CI
+(`.github/workflows/publish.yml`) on a `v*` tag push, using OIDC trusted
+publishing — there is no npm token configured locally, so a manual publish
+cannot authenticate and would bypass the release pipeline.
+
+To cut a release: bump `version` in `package.json`, commit, and push the
+matching `v*` tag. `prepublishOnly` runs `clean` + `build` in CI.
