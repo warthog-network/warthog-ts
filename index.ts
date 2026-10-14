@@ -12,7 +12,6 @@ export type { NodeUrl, ApiResult, ApiSuccess, ApiError, WarthogApiVersion, Warth
 export { HistoryCacheRunner, HistoryBlocks } from "./src/HistoryCache";
 export type {
   HistoryBlock,
-  HistoryPage,
   RefreshChange,
   LoadMoreChange,
 } from "./src/HistoryCache";

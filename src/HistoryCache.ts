@@ -10,14 +10,9 @@ export type HistoryBlock = {
   [k: string]: unknown;
 };
 
-export type HistoryPage = {
-  fromId: number;              // lowest historyId in the page; 0 if empty
-  perBlock: HistoryBlock[];   // newest-first
-};
-
 // =====================================================================
 // HistoryBlocks: a list of blocks (newest-first) with an exhausted flag.
-// Used for the cache, the stitch, and the page in appendEarlier.
+// Used for the aggregator's data and the in-flight stitch.
 // =====================================================================
 
 // What refresh() committed. Returned rather than pushed through a callback,
@@ -56,12 +51,13 @@ export class HistoryBlocks {
 }
 
 // =====================================================================
-// HistorySplicer: file-private inner. Owns the cache's data and a
-// known-hash set. Provides tryConsume (the loop's decision logic) and
-// appendEarlier (for pagination).
+// HistoryAggregator: file-private inner. Owns the committed block list
+// and the set of hashes it knows. Folds incoming pages into that list:
+// tryConsume stitches a walked-back page against what it holds, and
+// appendEarlier extends it further into the past for pagination.
 // =====================================================================
 
-class HistorySplicer {
+class HistoryAggregator {
   private data = new HistoryBlocks();
   private knownHashes = new Set<string>();
 
@@ -232,7 +228,7 @@ class HistorySplicer {
 // =====================================================================
 
 class HistoryCache {
-  private current = new HistorySplicer();
+  private aggregator = new HistoryAggregator();
   private stitch = new HistoryBlocks();
   private requestNonce = 0;
 
@@ -257,12 +253,12 @@ class HistoryCache {
 
   // Consume a response. Returns the change that was committed, or null when
   // the walk should fetch another page. All the decision logic is in
-  // current.tryConsume. Staleness is not checked here: the caller compares
-  // the nonce it was given against isCurrentNonce before calling this.
-  onHistory(page: HistoryPage): RefreshChange | null {
-    this.stitch.blocks.push(...page.perBlock);
-    this.stitch.exhausted = page.perBlock.length === 0;
-    const change = this.current.tryConsume(this.stitch);
+  // aggregator.tryConsume. Staleness is not checked here: the caller
+  // compares the nonce it was given against isCurrentNonce before calling.
+  onHistory(blocks: HistoryBlock[]): RefreshChange | null {
+    this.stitch.blocks.push(...blocks);
+    this.stitch.exhausted = blocks.length === 0;
+    const change = this.aggregator.tryConsume(this.stitch);
     if (change === null) return null;
     this.resetStitch();
     return change;
@@ -275,37 +271,36 @@ class HistoryCache {
     return nonce === this.requestNonce;
   }
 
-
   // Append an earlier page. Returns false if stale (version changed).
-  appendEarlier(page: HistoryPage, expectedVersion: number): boolean {
-    const pageBlocks = new HistoryBlocks();
-    pageBlocks.blocks = page.perBlock;
-    pageBlocks.exhausted = page.perBlock.length === 0;
-    return this.current.appendEarlier(pageBlocks, expectedVersion);
+  appendEarlier(blocks: HistoryBlock[], expectedVersion: number): boolean {
+    const stitch = new HistoryBlocks();
+    stitch.blocks = blocks;
+    stitch.exhausted = blocks.length === 0;
+    return this.aggregator.appendEarlier(stitch, expectedVersion);
   }
 
   // Clear the cache. Used on account switch. resetStitch also bumps the
   // nonce, so a response from a walk started for the previous account is
   // rejected instead of being applied to the fresh cache.
   clear(): void {
-    this.current.clear();
+    this.aggregator.clear();
     this.resetStitch();
   }
 
   earliestHistoryId(): number {
-    return this.current.earliestHistoryId();
+    return this.aggregator.earliestHistoryId();
   }
 
   isExhausted(): boolean {
-    return this.current.isExhausted();
+    return this.aggregator.isExhausted();
   }
 
   getVersion(): number {
-    return this.current.getVersion();
+    return this.aggregator.getVersion();
   }
 
   getBlocks(): readonly HistoryBlock[] {
-    return this.current.getBlocks();
+    return this.aggregator.getBlocks();
   }
 }
 
@@ -320,7 +315,7 @@ export class HistoryCacheRunner {
   private isPaginating = false;
 
   constructor(
-    private fetcher: (beforeId: number) => Promise<HistoryPage>,
+    private fetcher: (beforeId: number) => Promise<HistoryBlock[]>,
   ) {}
 
   // Refresh: walk the loop, terminate on a join, and return the change
@@ -335,11 +330,11 @@ export class HistoryCacheRunner {
       this.cache.resetStitch();
       for (let i = 0; i < 100; i++) {  // safety bound
         const req = this.cache.getNextRequest();
-        const page = await this.fetcher(req.beforeId);
+        const blocks = await this.fetcher(req.beforeId);
         // The walk may have been invalidated while the fetch was in flight
         // (a clear for an account switch). Drop the response.
         if (!this.cache.isCurrentNonce(req.nonce)) return null;
-        const change = this.cache.onHistory(page);
+        const change = this.cache.onHistory(blocks);
         if (change !== null) {
           // A commit that introduced no new blocks changed nothing, so
           // report null rather than a change the caller must inspect.
@@ -365,11 +360,11 @@ export class HistoryCacheRunner {
     if (cursor <= 0) return null;
     this.isPaginating = true;
     try {
-      const page = await this.fetcher(cursor);
-      if (!this.cache.appendEarlier(page, versionAtRequest)) {
+      const blocks = await this.fetcher(cursor);
+      if (!this.cache.appendEarlier(blocks, versionAtRequest)) {
         return null;
       }
-      return { kind: "append", blocks: page.perBlock };
+      return { kind: "append", blocks };
     } finally {
       this.isPaginating = false;
     }

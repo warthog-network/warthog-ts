@@ -2,7 +2,6 @@ import { test, expect, describe } from "bun:test";
 import { HistoryCacheRunner, HistoryBlocks } from "../HistoryCache";
 import type {
   HistoryBlock,
-  HistoryPage,
   RefreshChange,
   LoadMoreChange,
 } from "../HistoryCache";
@@ -34,10 +33,6 @@ function block(hash: string, height: number, historyId?: number): HistoryBlock {
     };
 }
 
-function page(fromId: number, blocks: HistoryBlock[]): HistoryPage {
-    return { fromId, perBlock: blocks };
-}
-
 function blockHashes(blocks: readonly HistoryBlock[]): string[] {
     return blocks.map(b => b.header.hash);
 }
@@ -61,8 +56,7 @@ function applyRefreshOrNull(current: readonly HistoryBlock[], change: RefreshCha
 describe("HistoryCacheRunner", () => {
     test("first time: stores the page as the cache", async () => {
         const blocks = [block(HASH_X, 10), block(HASH_A, 9), block(HASH_B, 8)];
-        const fetcher = async (beforeId: number) =>
-            page(beforeId === MAX_CURSOR ? 8 : 0, blocks);
+        const fetcher = async (_beforeId: number) => blocks;
         const runner = new HistoryCacheRunner(fetcher);
         const change = await runner.refresh();
         expect(kind(change)).toBe("refresh");
@@ -75,7 +69,7 @@ describe("HistoryCacheRunner", () => {
     test("steady state: first poll replaces, repeat poll is a no-op", async () => {
         const blocks = [block(HASH_X, 10), block(HASH_A, 9), block(HASH_B, 8)];
         const fetcher = async (beforeId: number) =>
-            beforeId === MAX_CURSOR ? page(8, blocks) : page(0, []);
+            beforeId === MAX_CURSOR ? blocks : [];
         const runner = new HistoryCacheRunner(fetcher);
         const first = await runner.refresh();
         expect(kind(first)).toBe("refresh");
@@ -104,8 +98,8 @@ describe("HistoryCacheRunner", () => {
         let callCount = 0;
         const fetcher = async (_beforeId: number) => {
             callCount++;
-            if (callCount === 1) return page(4, initial);
-            return page(0, appended);
+            if (callCount === 1) return initial;
+            return appended;
         };
         const runner = new HistoryCacheRunner(fetcher);
         // First refresh: populate the cache.
@@ -145,8 +139,8 @@ describe("HistoryCacheRunner", () => {
         let pollCount = 0;
         const fetcher = async (_beforeId: number) => {
             pollCount++;
-            if (pollCount === 1) return page(4, old);
-            return page(4, reorg);
+            if (pollCount === 1) return old;
+            return reorg;
         };
         const runner = new HistoryCacheRunner(fetcher);
         // First refresh: populate the cache.
@@ -184,8 +178,8 @@ describe("HistoryCacheRunner", () => {
         let pollCount = 0;
         const fetcher = async (_beforeId: number) => {
             pollCount++;
-            if (pollCount === 1) return page(4, old);
-            return page(4, reorg);
+            if (pollCount === 1) return old;
+            return reorg;
         };
         const runner = new HistoryCacheRunner(fetcher);
         // First refresh: populate the cache.
@@ -210,9 +204,9 @@ describe("HistoryCacheRunner", () => {
         const initial = [block(HASH_X, 10), block(HASH_A, 9), block(HASH_B, 8)];
         const more = [block(HASH_C, 7), block(HASH_D, 6)];
         const fetcher = async (beforeId: number) => {
-            if (beforeId === MAX_CURSOR) return page(8, initial);
-            if (beforeId === 8) return page(6, more);
-            return page(0, []);
+            if (beforeId === MAX_CURSOR) return initial;
+            if (beforeId === 8) return more;
+            return [];
         };
         const runner = new HistoryCacheRunner(fetcher);
         let current = applyRefreshOrNull([], await runner.refresh());
@@ -234,8 +228,8 @@ describe("HistoryCacheRunner", () => {
     test("loadMore: empty page means exhausted; returns none on next call", async () => {
         const initial = [block(HASH_X, 10), block(HASH_A, 9), block(HASH_B, 8)];
         const fetcher = async (beforeId: number) => {
-            if (beforeId === MAX_CURSOR) return page(8, initial);
-            return page(0, []);
+            if (beforeId === MAX_CURSOR) return initial;
+            return [];
         };
         const runner = new HistoryCacheRunner(fetcher);
         await runner.refresh();
@@ -255,7 +249,7 @@ describe("HistoryCacheRunner", () => {
     test("clear: resets the cache and returns nothing", async () => {
         const initial = [block(HASH_X, 10), block(HASH_A, 9)];
         const fetcher = async (beforeId: number) =>
-            beforeId === MAX_CURSOR ? page(9, initial) : page(0, []);
+            beforeId === MAX_CURSOR ? initial : [];
         const runner = new HistoryCacheRunner(fetcher);
         let current = applyRefreshOrNull([], await runner.refresh());
         expect(current.length).toBe(2);
@@ -274,9 +268,9 @@ describe("HistoryCacheRunner", () => {
             callCount++;
             if (callCount === 1) {
                 await new Promise(r => setTimeout(r, 10));  // slow
-                return page(9, oldAccount);
+                return oldAccount;
             }
-            return page(20, newAccount);
+            return newAccount;
         };
         const runner = new HistoryCacheRunner(fetcher);
 
@@ -299,7 +293,7 @@ describe("HistoryCacheRunner", () => {
         const fetcher = async (beforeId: number) => {
             // Slow response.
             await new Promise(r => setTimeout(r, 10));
-            return page(9, initial);
+            return initial;
         };
         const runner = new HistoryCacheRunner(fetcher);
         const p1 = runner.refresh();
@@ -337,10 +331,10 @@ describe("HistoryCacheRunner", () => {
         let pollCount = 0;
         const fetcher = async (_beforeId: number) => {
             pollCount++;
-            if (pollCount === 1) return page(7, initial);
-            if (pollCount === 2) return page(8, page1);
-            if (pollCount === 3) return page(4, page2);
-            return page(0, []);
+            if (pollCount === 1) return initial;
+            if (pollCount === 2) return page1;
+            if (pollCount === 3) return page2;
+            return [];
         };
         const runner = new HistoryCacheRunner(fetcher);
         // First refresh: isFirstTime, cache = [X, A, B, C].
