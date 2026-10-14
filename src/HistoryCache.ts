@@ -127,7 +127,7 @@ class HistoryAggregator {
   // - No join in the stitch, and the stitch hasn't walked past the
   //   bottom. The loop should fetch more pages.
   tryConsume(stitch: HistoryBlocks): RefreshChange | null{
-    var cblocks = this.data.blocks;
+    const cblocks = this.data.blocks;
     const isFirstTime = cblocks.length === 0;
     if (isFirstTime || stitch.exhausted) {
       return this.replaceAll(stitch);
