@@ -20,6 +20,29 @@ export type HistoryPage = {
 // Used for the cache, the stitch, and the page in appendEarlier.
 // =====================================================================
 
+// What refresh() committed. Returned rather than pushed through a callback,
+// so the consumer stays in control of how it applies a change. Apply it
+// with a single rule:
+//   next = [...newBlocks, ...current.filter(b => b.height < deleteFrom)]
+// deleteFrom = 0 means discard everything, which is how a wholesale
+// replace is told apart from a fork at a glance.
+export interface RefreshChange {
+  newBlocks: readonly HistoryBlock[];
+  deleteFrom: number;
+}
+
+// What loadMore() committed. loadMore only ever extends the cache
+// downward, so this is the single outcome it can report.
+export type LoadMoreChange = { kind: "append"; blocks: readonly HistoryBlock[] };
+
+// A null result from either method means nothing changed and there is
+// nothing to do. That covers an idle chain (a splice that would reinsert
+// the blocks it dropped), a call skipped because one is already in flight,
+// and a response that lost a race and was discarded as stale. Note that
+// replace with an empty block list is NOT null: it is a real change that
+// tells the consumer to clear its list, which is exactly the case where
+// returning null would leave stale blocks on screen.
+
 export class HistoryBlocks {
   blocks: HistoryBlock[] = [];   // newest-first
   exhausted: boolean = false;
@@ -87,36 +110,39 @@ class HistorySplicer {
   }
 
   // Wholesale replace. Takes ownership of the stitch. Bumps the version.
-  replaceAll(stitch: HistoryBlocks): void {
+  // Returns the resulting change, which is always a full replace.
+  replaceAll(stitch: HistoryBlocks): RefreshChange {
     this.data = stitch;
     this.knownHashes.clear();
     for (const b of this.data.blocks) this.knownHashes.add(b.header.hash);
     this.version += 1;
+    return { newBlocks: this.getBlocks(), deleteFrom: 0 };
   }
 
-  // Try to consume the stitch. Returns true if the cache was updated
-  // (commit; the loop should break), false if the loop should continue
-  // (no join found yet, and not walked past the bottom).
+  // Try to consume the stitch. Returns the change that was committed, or
+  // null if the loop should fetch another page (no join found yet, and not
+  // walked past the bottom).
   //
-  // Commit cases (return true):
+  // The commit cases:
   // - First time: the cache is empty. Wholesale replace.
   // - Stitch is exhausted: the loop walked to the bottom of the new
   //   chain. Wholesale replace.
   // - Walked past bottom: the stitch extends below the cache's bottom.
   //   No future page can have a join. Wholesale replace.
   // - Join found: splice. The cache's at-and-below-join is kept; the
-  //   stitch's data below the join is discarded.
+  //   stitch's data below the join is discarded. The returned change is
+  //   trimmed to the blocks the cache had not seen, so a steady-state poll
+  //   returns empty newBlocks and the runner reports nothing changed.
   //
-  // Continue case (return false):
+  // Continue case:
   // - No join in the stitch, and the stitch hasn't walked past the
   //   bottom. The loop should fetch more pages.
-  tryConsume(stitch: HistoryBlocks): boolean {
+  tryConsume(stitch: HistoryBlocks): RefreshChange | null{
     const isFirstTime = this.data.blocks.length === 0;
     if (isFirstTime || stitch.exhausted) {
-      this.replaceAll(stitch);
-      return true;
+      return this.replaceAll(stitch);
     }
-    if (stitch.blocks.length === 0) return false;
+    if (stitch.blocks.length === 0) return null;
 
     // Walked past bottom first. If the stitch extends below the cache's
     // bottom, no future page can have a join (subsequent pages are even
@@ -124,8 +150,7 @@ class HistorySplicer {
     const cacheEarliestHeight = this.data.blocks[this.data.blocks.length - 1]!.height;
     const stitchEarliestHeight = stitch.blocks[stitch.blocks.length - 1]!.height;
     if (stitchEarliestHeight < cacheEarliestHeight) {
-      this.replaceAll(stitch);
-      return true;
+      return this.replaceAll(stitch);
     }
 
     // Not walked past. Try to find a join. Walk the stitch from the
@@ -150,20 +175,38 @@ class HistorySplicer {
           drop < this.data.blocks.length &&
           this.data.blocks[drop]!.height > joinHeight
         ) {
-          this.knownHashes.delete(this.data.blocks[drop]!.header.hash);
           drop++;
         }
-        this.data.blocks.splice(0, drop);
         const newTop = stitch.blocks.slice(0, i);
+
+        // Known blocks in newTop are always a contiguous run at the bottom:
+        // if a block at height h is in the cache, the one at h-1 is too (an
+        // equal hash means an equal prevHash). So scan back from the deepest
+        // end and stop at the first block the cache has not seen. Everything
+        // from there up is genuinely new; everything below is already held
+        // and does not need resending.
+        let k = newTop.length;
+        while (k > 0 && this.knownHashes.has(newTop[k - 1]!.header.hash)) k--;
+
+        for (let d = 0; d < drop; d++) {
+          this.knownHashes.delete(this.data.blocks[d]!.header.hash);
+        }
+        this.data.blocks.splice(0, drop);
         this.data.blocks.unshift(...newTop);
         for (const b of newTop) this.knownHashes.add(b.header.hash);
         this.data.exhausted = false;
-        return true;
+        // k === 0 means the stitch brought nothing the cache lacked, which
+        // is the steady state: the splice was an identity. Returned with no
+        // newBlocks, and refresh turns that into null.
+        return {
+          newBlocks: newTop.slice(0, k),
+          deleteFrom: k === 0 ? this.data.blocks[0]!.height : newTop[k - 1]!.height,
+        };
       }
     }
 
     // No join found, not walked past. Continue the loop.
-    return false;
+    return null;
   }
 
   // Append an earlier page. Takes a HistoryBlocks (the page). The page's
@@ -212,18 +255,26 @@ class HistoryCache {
     return { nonce: this.requestNonce, beforeId: cursor };
   }
 
-  // Consume a response. Returns -1 (stale), 0 (committed), or 1 (need
-  // more). All the decision logic is in current.tryConsume.
-  onHistory(nonce: number, page: HistoryPage): -1 | 0 | 1 {
-    if (nonce !== this.requestNonce) return -1;
+  // Consume a response. Returns the change that was committed, or null when
+  // the walk should fetch another page. All the decision logic is in
+  // current.tryConsume. Staleness is not checked here: the caller compares
+  // the nonce it was given against isCurrentNonce before calling this.
+  onHistory(page: HistoryPage): RefreshChange | null {
     this.stitch.blocks.push(...page.perBlock);
     this.stitch.exhausted = page.perBlock.length === 0;
-    if (this.current.tryConsume(this.stitch)) {
-      this.resetStitch();
-      return 0;
-    }
-    return 1;
+    const change = this.current.tryConsume(this.stitch);
+    if (change === null) return null;
+    this.resetStitch();
+    return change;
   }
+
+  // Whether a nonce handed out by getNextRequest is still the live one. A
+  // walk is invalidated by resetStitch, which clear() also calls, so a
+  // response for a previous account is rejected rather than applied.
+  isCurrentNonce(nonce: number): boolean {
+    return nonce === this.requestNonce;
+  }
+
 
   // Append an earlier page. Returns false if stale (version changed).
   appendEarlier(page: HistoryPage, expectedVersion: number): boolean {
@@ -233,10 +284,12 @@ class HistoryCache {
     return this.current.appendEarlier(pageBlocks, expectedVersion);
   }
 
-  // Clear the cache. Used on account switch.
+  // Clear the cache. Used on account switch. resetStitch also bumps the
+  // nonce, so a response from a walk started for the previous account is
+  // rejected instead of being applied to the fresh cache.
   clear(): void {
     this.current.clear();
-    this.stitch = new HistoryBlocks();
+    this.resetStitch();
   }
 
   earliestHistoryId(): number {
@@ -268,53 +321,63 @@ export class HistoryCacheRunner {
 
   constructor(
     private fetcher: (beforeId: number) => Promise<HistoryPage>,
-    private onUpdate: (blocks: readonly HistoryBlock[]) => void,
   ) {}
 
-  // Refresh: walk the loop, terminate on join. The cache's bottom is
-  // preserved (anything in the stitch below the join is discarded).
-  async refresh(): Promise<void> {
-    if (this.isRefreshing) return;
+  // Refresh: walk the loop, terminate on a join, and return the change
+  // that was committed, or null if nothing changed. See RefreshChange for
+  // how to apply it.
+  // A fetch failure rejects the promise and the caller keeps whatever it
+  // already had; there is no catch-all notification.
+  async refresh(): Promise<RefreshChange | null> {
+    if (this.isRefreshing) return null;
     this.isRefreshing = true;
     try {
       this.cache.resetStitch();
       for (let i = 0; i < 100; i++) {  // safety bound
         const req = this.cache.getNextRequest();
         const page = await this.fetcher(req.beforeId);
-        const result = this.cache.onHistory(req.nonce, page);
-        if (result === 0) break;
-        if (result === -1) return;
+        // The walk may have been invalidated while the fetch was in flight
+        // (a clear for an account switch). Drop the response.
+        if (!this.cache.isCurrentNonce(req.nonce)) return null;
+        const change = this.cache.onHistory(page);
+        if (change !== null) {
+          // A commit that introduced no new blocks changed nothing, so
+          // report null rather than a change the caller must inspect.
+          return change.newBlocks.length === 0 ? null : change;
+        }
       }
+      return null;  // safety bound reached without committing
     } finally {
       this.isRefreshing = false;
-      this.onUpdate(this.cache.getBlocks());
     }
   }
 
   // loadMore: fetch one page below the cache and append it. No loop.
-  // The consumer calls this multiple times if they need more pages.
-  async loadMore(): Promise<boolean> {
-    if (this.isPaginating) return false;
-    if (this.cache.isExhausted()) return false;
+  // Returns an "append" carrying just the newly added entries, so the
+  // consumer extends its list without re-rendering everything. Null means
+  // the cache is exhausted, the call was skipped because one is already in
+  // flight, or the response lost a race and was discarded.
+  async loadMore(): Promise<LoadMoreChange | null> {
+    if (this.isPaginating) return null;
+    if (this.cache.isExhausted()) return null;
     const versionAtRequest = this.cache.getVersion();
     const cursor = this.cache.earliestHistoryId();
-    if (cursor <= 0) return false;
+    if (cursor <= 0) return null;
     this.isPaginating = true;
     try {
       const page = await this.fetcher(cursor);
       if (!this.cache.appendEarlier(page, versionAtRequest)) {
-        return false;
+        return null;
       }
-      this.onUpdate(this.cache.getBlocks());
-      return true;
+      return { kind: "append", blocks: page.perBlock };
     } finally {
       this.isPaginating = false;
     }
   }
 
-  // Clear the cache. Used on account switch.
+  // Clear the cache. Used on account switch. Returns nothing: the caller
+  // initiated it and knows to empty its own list.
   clear(): void {
     this.cache.clear();
-    this.onUpdate(this.cache.getBlocks());
   }
 }

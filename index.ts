@@ -10,4 +10,9 @@ export { ChainPin } from "./src/types/ChainPin";
 export { WarthogApi, ChainHead, KNOWN_NODES } from "./src/types/Api";
 export type { NodeUrl, ApiResult, ApiSuccess, ApiError, WarthogApiVersion, WarthogApiOptions, SubmitTransactionData } from "./src/types/Api";
 export { HistoryCacheRunner, HistoryBlocks } from "./src/HistoryCache";
-export type { HistoryBlock, HistoryPage } from "./src/HistoryCache";
+export type {
+  HistoryBlock,
+  HistoryPage,
+  RefreshChange,
+  LoadMoreChange,
+} from "./src/HistoryCache";
