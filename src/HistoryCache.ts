@@ -51,15 +51,15 @@ export class HistoryBlocks {
 }
 
 // =====================================================================
-// HistoryAggregator: file-private inner. Owns the committed block list
-// and the set of hashes it knows. Folds incoming pages into that list:
-// tryConsume stitches a walked-back page against what it holds, and
-// appendEarlier extends it further into the past for pagination.
+// HistoryAggregator: file-private inner. Owns the committed block list.
+// Folds incoming pages into that list: tryConsume stitches a walked-back
+// page against what it holds, and appendEarlier extends it further into
+// the past for pagination. Both lists are newest-first, which is what
+// lets tryConsume find a join by walking them together.
 // =====================================================================
 
 class HistoryAggregator {
   private data = new HistoryBlocks();
-  private knownHashes = new Set<string>();
 
   // Monotonic counter that changes exactly when the cache's bottom (the
   // pagination cursor target, earliestHistoryId) moves. Used by appendEarlier
@@ -73,10 +73,6 @@ class HistoryAggregator {
   // it: replaceAll, clear, and appendEarlier. The splice branch deliberately
   // does not, because it preserves the bottom.
   private version: number = 0;
-
-  hasHash(hash: string): boolean {
-    return this.knownHashes.has(hash);
-  }
 
   // Return a fresh snapshot of the blocks array. The internal cache mutates
   // this.data.blocks in place (the splice branch and appendEarlier), so we
@@ -101,7 +97,6 @@ class HistoryAggregator {
 
   clear(): void {
     this.data = new HistoryBlocks();
-    this.knownHashes.clear();
     this.version += 1;
   }
 
@@ -109,8 +104,6 @@ class HistoryAggregator {
   // Returns the resulting change, which is always a full replace.
   replaceAll(stitch: HistoryBlocks): RefreshChange {
     this.data = stitch;
-    this.knownHashes.clear();
-    for (const b of this.data.blocks) this.knownHashes.add(b.header.hash);
     this.version += 1;
     return { newBlocks: this.getBlocks(), deleteFrom: 0 };
   }
@@ -126,15 +119,16 @@ class HistoryAggregator {
   // - Walked past bottom: the stitch extends below the cache's bottom.
   //   No future page can have a join. Wholesale replace.
   // - Join found: splice. The cache's at-and-below-join is kept; the
-  //   stitch's data below the join is discarded. The returned change is
-  //   trimmed to the blocks the cache had not seen, so a steady-state poll
-  //   returns empty newBlocks and the runner reports nothing changed.
+  //   stitch's data below the join is discarded. Everything the stitch
+  //   brought above the join is new, so a steady-state poll returns
+  //   empty newBlocks and the runner reports nothing changed.
   //
   // Continue case:
   // - No join in the stitch, and the stitch hasn't walked past the
   //   bottom. The loop should fetch more pages.
   tryConsume(stitch: HistoryBlocks): RefreshChange | null{
-    const isFirstTime = this.data.blocks.length === 0;
+    var cblocks = this.data.blocks;
+    const isFirstTime = cblocks.length === 0;
     if (isFirstTime || stitch.exhausted) {
       return this.replaceAll(stitch);
     }
@@ -142,63 +136,51 @@ class HistoryAggregator {
 
     // Walked past bottom first. If the stitch extends below the cache's
     // bottom, no future page can have a join (subsequent pages are even
-    // deeper). Wholesale replace immediately, skip the join search.
-    const cacheEarliestHeight = this.data.blocks[this.data.blocks.length - 1]!.height;
+    // deeper). Wholesale replace immediately, skip the join search. This
+    // has to come first: the join search stops at the highest agreeing
+    // pair, which it finds at the top, so it would never notice that the
+    // stitch reached deeper and would discard what it found there.
+    const cacheEarliestHeight = cblocks[cblocks.length - 1]!.height;
     const stitchEarliestHeight = stitch.blocks[stitch.blocks.length - 1]!.height;
     if (stitchEarliestHeight < cacheEarliestHeight) {
       return this.replaceAll(stitch);
     }
 
-    // Not walked past. Try to find a join. Walk the stitch from the
-    // earliest toward the newest. The first match is the join (the
-    // deepest in the stitch that's in the cache).
-    const cacheMaxHeight = this.data.blocks[0]!.height;
-    for (let i = stitch.blocks.length - 1; i >= 0; i--) {
-      const stitchBlock = stitch.blocks[i]!;
-      // A stitch block taller than the cache's newest block cannot be a
-      // known hash (that would need a SHA-256 collision between two
-      // distinct blocks). Testing the height first is a cheap integer
-      // compare that skips the Set lookup for blocks that cannot match.
-      if (stitchBlock.height > cacheMaxHeight) continue;
-      if (this.knownHashes.has(stitchBlock.header.hash)) {
-        // Join found. Splice. The cache's at-and-below-join is kept.
-        // The stitch's data at-and-above-join replaces the cache's
-        // above-join. The stitch's data below the join is discarded
-        // (the cache's bottom is preserved).
-        const joinHeight = stitchBlock.height;
-        let drop = 0;
-        while (
-          drop < this.data.blocks.length &&
-          this.data.blocks[drop]!.height > joinHeight
-        ) {
-          drop++;
-        }
-        const newTop = stitch.blocks.slice(0, i);
-
-        // Known blocks in newTop are always a contiguous run at the bottom:
-        // if a block at height h is in the cache, the one at h-1 is too (an
-        // equal hash means an equal prevHash). So scan back from the deepest
-        // end and stop at the first block the cache has not seen. Everything
-        // from there up is genuinely new; everything below is already held
-        // and does not need resending.
-        let k = newTop.length;
-        while (k > 0 && this.knownHashes.has(newTop[k - 1]!.header.hash)) k--;
-
-        for (let d = 0; d < drop; d++) {
-          this.knownHashes.delete(this.data.blocks[d]!.header.hash);
-        }
-        this.data.blocks.splice(0, drop);
-        this.data.blocks.unshift(...newTop);
-        for (const b of newTop) this.knownHashes.add(b.header.hash);
-        this.data.exhausted = false;
-        // k === 0 means the stitch brought nothing the cache lacked, which
-        // is the steady state: the splice was an identity. Returned with no
-        // newBlocks, and refresh turns that into null.
-        return {
-          newBlocks: newTop.slice(0, k),
-          deleteFrom: k === 0 ? this.data.blocks[0]!.height : newTop[k - 1]!.height,
-        };
-      }
+    // Not walked past. Find the join: the first height at which the stitch
+    // and the cache agree. Both are newest-first, so walk them together
+    // from the top, advancing whichever is taller until their heights line
+    // up. A pair whose hashes differ is a fork, so step past it too.
+    //
+    // Stopping at the highest agreeing pair is what makes the result
+    // simple. Every stitch block above the join is genuinely new: a
+    // pointer is only ever advanced past an element that has no
+    // counterpart at any height in the other list. So the blocks above
+    // the join need no trimming, and ci doubles as the count of cache
+    // blocks above the join.
+    let ci = 0; // cache index
+    for (let si = 0; si < stitch.blocks.length; si++) { // si is stitch index
+      const sb = stitch.blocks[si]!;
+      while (ci < cblocks.length && cblocks[ci]!.height > sb.height) ci++;
+      // The cache holds nothing at or below this height, so nothing
+      // deeper can join either.
+      if (ci >= cblocks.length) break;
+      const cb = cblocks[ci]!;
+      if (cb.height !== sb.height) continue;
+      if (cb.header.hash !== sb.header.hash) continue;
+      // Join at stitch index si. The cache's blocks above ci go, the
+      // stitch's blocks below si go, and the stitch's above si land on
+      // top. Both lists stay newest-first, so the bottom is preserved.
+      const newTop = stitch.blocks.slice(0, si);
+      this.data.blocks.splice(0, ci);
+      this.data.blocks.unshift(...newTop);
+      this.data.exhausted = false;
+      // newTop empty means the join is the cache's top block, so the
+      // splice was the identity: refresh turns the empty newBlocks into
+      // null.
+      return {
+        newBlocks: newTop,
+        deleteFrom: newTop.length === 0 ? sb.height : stitch.blocks[si - 1]!.height,
+      };
     }
 
     // No join found, not walked past. Continue the loop.
@@ -212,10 +194,7 @@ class HistoryAggregator {
   // is now provably wrong, even if it was about to be checked.
   appendEarlier(page: HistoryBlocks, expectedVersion: number): boolean {
     if (expectedVersion !== this.version) return false;
-    for (const b of page.blocks) {
-      this.data.blocks.push(b);
-      this.knownHashes.add(b.header.hash);
-    }
+    this.data.blocks.push(...page.blocks);
     this.data.exhausted = page.exhausted;
     this.version += 1;
     return true;

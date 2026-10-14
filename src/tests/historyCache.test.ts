@@ -163,15 +163,19 @@ describe("HistoryCacheRunner", () => {
         ]);
     });
 
-    test("partial reorg: A, B, C reorged; X, D, E, F unchanged", async () => {
+    test("partial reorg: X, A, B, C reorged; D, E, F unchanged", async () => {
         // First poll: [X, A, B, C, D, E, F].
         const old = [block(HASH_X, 10), block(HASH_A, 9), block(HASH_B, 8),
             block(HASH_C, 7), block(HASH_D, 6), block(HASH_E, 5), block(HASH_F, 4)];
-        // Second poll: [X, A', B', C', D, E, F]. X, D, E, F unchanged.
+        // Second poll: [X', A', B', C', D, E, F]. Fork at height 8, so the
+        // four blocks above it are replaced and the three below are not.
+        // A block hash commits to its prevHash, so a reorg can never leave
+        // the tip unchanged while the blocks below it change.
+        const HASH_X2 = "x2".repeat(32);
         const HASH_A2 = "a2".repeat(32);
         const HASH_B2 = "b2".repeat(32);
         const HASH_C2 = "c2".repeat(32);
-        const reorg = [block(HASH_X, 10), block(HASH_A2, 9), block(HASH_B2, 8),
+        const reorg = [block(HASH_X2, 10), block(HASH_A2, 9), block(HASH_B2, 8),
             block(HASH_C2, 7), block(HASH_D, 6), block(HASH_E, 5), block(HASH_F, 4)];
         // Sequential fetcher: first call returns the initial, subsequent
         // calls return the reorg.
@@ -187,16 +191,16 @@ describe("HistoryCacheRunner", () => {
         expect(blockHashes(current)).toEqual([
             HASH_X, HASH_A, HASH_B, HASH_C, HASH_D, HASH_E, HASH_F,
         ]);
-        // Second refresh: the reorg. A, B, C are replaced; X, D, E, F stay and
-        // are trimmed from the payload. deleteFrom is C2's height (7).
+        // Second refresh: the reorg. X, A, B, C are replaced; D, E, F sit below
+        // the join and are left alone. deleteFrom is C2's height (7).
         const change = await runner.refresh();
         expect(kind(change)).toBe("refresh");
         if (change === null) throw new Error("expected a change");
         expect(change.deleteFrom).toBe(7);
-        expect(blockHashes(change.newBlocks)).toEqual([HASH_X, HASH_A2, HASH_B2, HASH_C2]);
+        expect(blockHashes(change.newBlocks)).toEqual([HASH_X2, HASH_A2, HASH_B2, HASH_C2]);
         current = applyRefresh(current, change);
         expect(blockHashes(current)).toEqual([
-            HASH_X, HASH_A2, HASH_B2, HASH_C2, HASH_D, HASH_E, HASH_F,
+            HASH_X2, HASH_A2, HASH_B2, HASH_C2, HASH_D, HASH_E, HASH_F,
         ]);
     });
 
