@@ -1,6 +1,8 @@
 // A block as it appears in a history page response.
 // Same shape as the Warthog API's Block, with a `historyId` field
 // (the lowest historyId in the block) added by the consumer's fetcher.
+// `historyId` is a page-level cursor: the node returns one per page, so a
+// fetcher stamps every block in the page with it.
 export type HistoryBlock = {
   header: { hash: string; height: number; [k: string]: unknown };
   body: Record<string, unknown>;
@@ -13,6 +15,9 @@ export type HistoryBlock = {
 // =====================================================================
 // HistoryBlocks: a list of blocks (newest-first) with an exhausted flag.
 // Used for the aggregator's data and the in-flight stitch.
+//
+// Not on the package barrel: nothing public accepts one. Exported from this
+// module only so the colocated tests can reach earliestHistoryId.
 // =====================================================================
 
 // What refresh() committed. Returned rather than pushed through a callback,
@@ -285,7 +290,15 @@ class HistoryCache {
 
 // =====================================================================
 // HistoryCacheRunner: the async wrapper. Drives the I/O. The only
-// thing the consumer (browser-wallet, client-explorer) interacts with.
+// thing a consumer interacts with.
+//
+// THE FETCHER CONTRACT
+//
+// `beforeId` is exclusive and is the lowest history id already held, not the
+// highest. The node filters `h.id < beforeId`, returns `perBlock` newest-first,
+// and sets the page's `fromId` to that page's lowest history id, not its first
+// row's. Pass `fromId` back unmodified; subtracting one skips an entry. See
+// src/tests/historyCacheCursor.test.ts.
 // =====================================================================
 
 export class HistoryCacheRunner {
