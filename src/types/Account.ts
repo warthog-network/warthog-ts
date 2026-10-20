@@ -1,10 +1,5 @@
-import type { ec } from "elliptic";
-import pkg from "elliptic";
 import { ethers } from "ethers";
 import { Address } from "./Address";
-
-const { ec: EC } = pkg;
-const ecInstance = new EC("secp256k1");
 
 /**
  * 65-byte ECDSA signature components.
@@ -36,8 +31,16 @@ export class Account {
      * @returns New Account with randomly generated keypair
      */
     public static fromRandom(): Account {
-        const keyPair = ecInstance.genKeyPair();
-        return Account.fromKeyPair(keyPair);
+        // A random 32-byte string is a valid secp256k1 key with overwhelming
+        // probability; retry on the (astronomically unlikely) invalid draw.
+        for (let attempt = 0; attempt < 8; attempt++) {
+            try {
+                return Account.fromSigningKey(new ethers.SigningKey(ethers.randomBytes(32)));
+            } catch {
+                // retry
+            }
+        }
+        throw new Error("failed to generate a valid secp256k1 private key");
     }
 
     /**
@@ -46,22 +49,25 @@ export class Account {
      * @returns Account derived from the private key
      */
     public static fromPrivateKeyHex(hex: string): Account {
-        const keyPair = ecInstance.keyFromPrivate(hex, "hex");
-        return Account.fromKeyPair(keyPair);
+        const normalized = hex.toLowerCase();
+        if (!/^[0-9a-f]*$/.test(normalized)) {
+            throw new Error("private key must be a hex string");
+        }
+        if (normalized.length > 64) {
+            throw new Error("private key must be at most 32 bytes");
+        }
+        const padded = normalized.padStart(64, "0");
+        return Account.fromSigningKey(new ethers.SigningKey("0x" + padded));
     }
 
     /**
-     * Derive account from an elliptic curve keypair.
-     * @param keyPair - EC keypair to derive from
+     * Derive account from a secp256k1 signing key.
+     * @param signingKey - Signing key to derive from
      * @returns Account with derived keys and address
      */
-    private static fromKeyPair(keyPair: ec.KeyPair): Account {
-        let privateKeyHex = keyPair.getPrivate().toString("hex");
-        while (privateKeyHex.length < 64) {
-            privateKeyHex = "0" + privateKeyHex;
-        }
-
-        const publicKeyHex = keyPair.getPublic().encodeCompressed("hex");
+    private static fromSigningKey(signingKey: ethers.SigningKey): Account {
+        const privateKeyHex = signingKey.privateKey.slice(2);
+        const publicKeyHex = signingKey.compressedPublicKey.slice(2);
 
         const publicKeyBuffer = Buffer.from(publicKeyHex, "hex");
         const sha256Hex = ethers.sha256(publicKeyBuffer);
@@ -106,8 +112,15 @@ export class Account {
         const bytes = messageToBytes(message);
         const digest = Buffer.from(ethers.sha256(bytes).slice(2), "hex");
         const { r, s, recid } = normalizeSignature(signature);
-        const point = ecInstance.recoverPubKey(digest, { r, s }, recid);
-        return point.encodeCompressed("hex");
+        // The recovery id's second bit flags an r value that overflowed the
+        // curve order. It is never set for secp256k1 (r < n with probability
+        // 1 - 2^-127), so only the parity bit carries information.
+        const publicKey = ethers.SigningKey.recoverPublicKey(digest, {
+            r: "0x" + r,
+            s: "0x" + s,
+            yParity: (recid & 1) as 0 | 1,
+        });
+        return compressPublicKey(publicKey);
     }
 
     /**
@@ -138,12 +151,11 @@ export class Account {
      * other internal callers that have already computed the digest.
      */
     private _signHash(hashBuffer: Buffer): Signature65 {
-        const keyPair = ecInstance.keyFromPrivate(this.privateKeyHex, "hex");
-        const signature = ecInstance.sign(hashBuffer, keyPair, { canonical: true });
+        const signature = new ethers.SigningKey("0x" + this.privateKeyHex).sign(hashBuffer);
 
-        const r = signature.r.toString(16).padStart(64, "0");
-        const s = signature.s.toString(16).padStart(64, "0");
-        const recid = signature.recoveryParam ?? 0;
+        const r = signature.r.slice(2);
+        const s = signature.s.slice(2);
+        const recid = signature.yParity;
 
         return {
             r,
@@ -166,8 +178,24 @@ function messageToBytes(message: string | Uint8Array): Buffer {
 }
 
 /**
+ * Convert an uncompressed public key (`0x04 || X || Y`) into the compressed
+ * form (`02`/`03` || X) that the Warthog protocol uses.
+ */
+function compressPublicKey(publicKeyHex: string): string {
+    // publicKeyHex is "0x" || "04" || X(32 bytes) || Y(32 bytes)
+    const uncompressed = publicKeyHex.slice(2);
+    if (uncompressed.length !== 130 || !uncompressed.startsWith("04")) {
+        throw new Error("unexpected uncompressed public key format");
+    }
+    const x = uncompressed.slice(2, 66);
+    const y = uncompressed.slice(66, 130);
+    const prefix = (parseInt(y.slice(-2), 16) & 1) === 1 ? "03" : "02";
+    return prefix + x;
+}
+
+/**
  * Normalize a `Signature65` object or 130-char hex string into the
- * `{r, s, recid}` shape expected by `elliptic`'s recover API.
+ * `{r, s, recid}` shape used for public key recovery.
  */
 function normalizeSignature(
     sig: Signature65 | string

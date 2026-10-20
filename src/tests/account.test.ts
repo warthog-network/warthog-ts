@@ -58,6 +58,87 @@ test("Account.signBytes returns a valid Signature65", () => {
     expect(/^[0-9a-f]+$/.test(sig.signature)).toBe(true);
 });
 
+/**
+ * Pinned RFC 6979 signature vectors for KNOWN_PRIVATE_KEY.
+ *
+ * The digests are the SHA-256 of the message, the signatures are the
+ * deterministic (r || s || recid) values. The third vector deliberately uses a
+ * message whose digest starts with a zero byte: that is the input class where
+ * a faulty nonce truncation (see CVE-2025-14505 in elliptic) produces a
+ * signature that is nearly, but not exactly, correct.
+ *
+ * These vectors were produced by the previous elliptic-based implementation
+ * and are byte-identical to the current output, so they pin the wire format
+ * of the signing path.
+ */
+const PINNED_VECTORS = [
+    {
+        name: "plain message",
+        message: "hello",
+        digest:
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        r: "dbeafb9b24ddf7d24c0bf82f078bf2ecc068654eb4873e3c74814543dd65ef49",
+        s: "711681c2dc77d895a78aea9485189758226f9cefd8091b830961c3f09ef80f90",
+        recid: 1,
+        signature:
+            "dbeafb9b24ddf7d24c0bf82f078bf2ecc068654eb4873e3c74814543dd65ef49711681c2dc77d895a78aea9485189758226f9cefd8091b830961c3f09ef80f9001",
+    },
+    {
+        name: "empty message",
+        message: "",
+        digest:
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        r: "ce84cb32ec1c4aca7e8794124303ff7bc0de08864aee6acbf66df1ce757a7b82",
+        s: "3f0a1154a8e8ba7fff32ea3fadd883fa10cc532d41f5d60def06dd9d963c5e02",
+        recid: 0,
+        signature:
+            "ce84cb32ec1c4aca7e8794124303ff7bc0de08864aee6acbf66df1ce757a7b823f0a1154a8e8ba7fff32ea3fadd883fa10cc532d41f5d60def06dd9d963c5e0200",
+    },
+    {
+        name: "message with a leading zero digest byte",
+        message: "warthog-leading-zero-264",
+        digest:
+            "0049704e969839bd144391b75529b632f76923764a850381952da58ed342f067",
+        r: "0ddfd65fe9031ede0e40df065b5a686b29907058e2d15d9c9b2418194464d99b",
+        s: "63e40acfb3f62dab3eb0b4a93d857a52c1227be852fad81335eab417da39f694",
+        recid: 0,
+        signature:
+            "0ddfd65fe9031ede0e40df065b5a686b29907058e2d15d9c9b2418194464d99b63e40acfb3f62dab3eb0b4a93d857a52c1227be852fad81335eab417da39f69400",
+    },
+];
+
+test("Account.signBytes matches the pinned RFC 6979 vectors", () => {
+    const account = Account.fromPrivateKeyHex(KNOWN_PRIVATE_KEY);
+
+    for (const vector of PINNED_VECTORS) {
+        const sig = account.signBytes(vector.message);
+
+        expect(sig.r).toBe(vector.r);
+        expect(sig.s).toBe(vector.s);
+        expect(sig.recid).toBe(vector.recid);
+        expect(sig.signature).toBe(vector.signature);
+    }
+});
+
+test("Account.recoverPublicKey recovers the pinned RFC 6979 vectors", () => {
+    for (const vector of PINNED_VECTORS) {
+        expect(Account.recoverPublicKey(vector.message, vector.signature)).toBe(
+            KNOWN_PUBLIC_KEY
+        );
+    }
+});
+
+test("Account.fromPrivateKeyHex zero-pads a short private key", () => {
+    const account = Account.fromPrivateKeyHex("abc");
+
+    expect(account.privateKeyHex).toBe("0".repeat(61) + "abc");
+    expect(account.publicKeyHex.length).toBe(66);
+});
+
+test("Account.fromPrivateKeyHex rejects a non-hex private key", () => {
+    expect(() => Account.fromPrivateKeyHex("zz")).toThrow();
+});
+
 test("Account.signBytes is deterministic for the same input", () => {
     const account = Account.fromPrivateKeyHex(KNOWN_PRIVATE_KEY);
     const sig1 = account.signBytes("hello");
