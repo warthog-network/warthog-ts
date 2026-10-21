@@ -256,7 +256,10 @@ global.Buffer = Buffer;
 
 This library requires:
 - `ethers` ^6.0.0 (peer dependency)
-- `elliptic` ^6.6.1 (bundled)
+
+There are no other runtime dependencies. Key handling, signing and public key
+recovery all go through `ethers`, which implements secp256k1 via
+`@noble/curves`.
 
 ## Development
 
