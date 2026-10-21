@@ -424,3 +424,19 @@ cannot authenticate and would bypass the release pipeline.
 
 To cut a release: bump `version` in `package.json`, commit, and push the
 matching `v*` tag. `prepublishOnly` runs `clean` + `build` in CI.
+
+**The tag is what triggers the publish, not the version bump.** The workflow
+fires on `on: push: tags: ['v*']`, so a version bump that is committed without
+a matching tag leaves the package unpublished, and that version number is then
+consumed: the next release has to skip it. Bump the version and create the
+tag in the same breath, then push both.
+
+`npm version patch` does the first two steps in one go (it bumps the version
+field in `package.json` and `package-lock.json`, commits, and creates the
+annotated tag), but the tag still has to be pushed for CI to see it. Note that
+`npm version` does not touch `bun.lock`, which carries no version field, so
+nothing is left out of sync by it.
+
+**Pushing a tag twice does not re-run the workflow.** If a tag was pushed but
+the publish failed, the tag is spent: cut a new version and tag rather than
+re-pushing the old one.
