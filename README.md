@@ -135,22 +135,22 @@ balance methods.
 
 ```typescript
 // The legacy node reports one number: the confirmed balance.
-const balance = await new WarthogLegacyApi(url).getWartBalance(address);
-balance.E8;   // bigint
+const confirmed = await new WarthogLegacyApi(url).getWartBalance(address);
+confirmed.E8;   // bigint
 
 // The DeFi node splits it three ways.
-const defi = await new WarthogDeFiApi(url).getWartBalance(address);
-defi.total.E8;      // what the account owns
-defi.locked.E8;     // locked in open limit orders
-defi.mempool.E8;    // locked by transactions in the mempool
-defi.free().E8;     // what can be spent now
+const balance = await new WarthogDeFiApi(url).getWartBalance(address);
+balance.total.E8;      // what the account owns
+balance.locked.E8;     // locked in open limit orders
+balance.mempool.E8;    // locked by transactions in the mempool
+balance.free().E8;     // what can be spent now
 
 // Token balances are the DeFi node's alone.
-const hog = await new WarthogDeFiApi(url).getTokenBalance(address, assetHash);
-hog.name;             // token name
-hog.decimals.decimals;  // token decimals
-hog.total.amount;     // what the account owns
-hog.free().amount;    // what can be spent now
+const tokenBalance = await new WarthogDeFiApi(url).getTokenBalance(address, assetHash);
+tokenBalance.name;         // token name
+tokenBalance.decimals;     // the token's TokenDecimals
+tokenBalance.total.amount; // what the account owns
+tokenBalance.free().amount; // what can be spent now
 ```
 
 ### Full Transaction Flow
