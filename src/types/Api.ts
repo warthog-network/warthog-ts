@@ -1,13 +1,19 @@
-import { TransactionContext } from './TransactionContext';
-import type { TransactionJson } from './TransactionContext';
+import {
+    WarthogDeFiTransactionContext,
+    WarthogLegacyTransactionContext,
+} from './TransactionContext';
+import type { LegacyTransactionJson, TransactionJson } from './TransactionContext';
 import { NonceId } from './NonceId';
 import { RoundedFee } from './Funds';
 import { ChainPin, chainHeadSource } from './ChainPin';
 
 /**
- * Known Warthog network nodes.
+ * Known legacy nodes (core/master, core/dev).
+ *
+ * These serve the V1 API generation. The list mirrors
+ * `public-data/data/legacy-nodes.csv` in the project hub.
  */
-export const KNOWN_NODES = [
+export const KNOWN_NODES_LEGACY = [
     'http://65.87.7.86:3001',
     'http://185.209.228.16:3001',
     'http://89.117.150.162:3001',
@@ -18,9 +24,33 @@ export const KNOWN_NODES = [
 ] as const;
 
 /**
- * Type representing a known node URL.
+ * Known DeFi nodes (core/defi).
+ *
+ * These serve the V2 API generation. The list mirrors
+ * `public-data/data/defi-nodes.csv` in the project hub.
  */
-export type NodeUrl = typeof KNOWN_NODES[number];
+export const KNOWN_NODES_DEFI = [
+    'http://65.87.7.86:3002/',
+    'https://warthog-defitestnet.duckdns.org/',
+    'http://104.251.219.14:3001/',
+    'http://85.56.145.106:3001/',
+    'http://64.44.90.170:3001/',
+] as const;
+
+/**
+ * Type representing a known legacy node URL.
+ */
+export type LegacyNodeUrl = typeof KNOWN_NODES_LEGACY[number];
+
+/**
+ * Type representing a known DeFi node URL.
+ */
+export type DeFiNodeUrl = typeof KNOWN_NODES_DEFI[number];
+
+/**
+ * Type representing any known node URL.
+ */
+export type NodeUrl = LegacyNodeUrl | DeFiNodeUrl;
 
 /**
  * Successful API response with data.
@@ -125,30 +155,20 @@ export interface RequestOptions {
 }
 
 /**
- * Client configuration.
+ * Shared behaviour of the two node clients.
+ *
+ * The two node families are not the same API, so they get a client each, and
+ * this base holds only what they genuinely share: the HTTP plumbing, the
+ * chain head fetch, and the transaction submission. What differs, the chain
+ * head shape and the transaction set, lives in the subclasses.
  */
-export interface WarthogApiOptions {
+export abstract class WarthogApiBase {
     /**
-     * Which `/chain/head` shape this node returns. Required — the V1 and V2
-     * payload shapes are not interchangeable.
+     * Which generation of the node API this client speaks.
      */
-    version: WarthogApiVersion;
-}
+    protected abstract readonly version: WarthogApiVersion;
 
-/**
- * Client for communicating with Warthog nodes.
- */
-export class WarthogApi {
-    private readonly version: WarthogApiVersion;
-
-    /**
-     * Create a new API client.
-     * @param baseUrl - Base URL of the Warthog node
-     * @param options - Declares which API generation the node speaks
-     */
-    constructor(public readonly baseUrl: string, options: WarthogApiOptions) {
-        this.version = options.version;
-    }
+    constructor(public readonly baseUrl: string) {}
 
     /**
      * Make an HTTP request to the API.
@@ -201,7 +221,7 @@ export class WarthogApi {
      *
      * Normalizes the V1 and V2 payload shapes into a single `ChainHead`.
      * @returns The chain head, or an error result when the payload does not
-     *   match the declared `version`.
+     *   match this client's generation.
      */
     async getChainHead(): Promise<ApiResult<ChainHead>> {
         const result = await this.request<unknown>('/chain/head');
@@ -223,14 +243,34 @@ export class WarthogApi {
 
     /**
      * Submit a signed transaction to the API.
-     * @param tx - Signed transaction JSON from TransactionContext
+     * @param tx - Signed transaction JSON from a transaction context
      * @returns Transaction hash if successful
      */
-    async submitTransaction(tx: TransactionJson): Promise<ApiResult<SubmitTransactionData>> {
+    async submitTransaction(
+        tx: TransactionJson | LegacyTransactionJson
+    ): Promise<ApiResult<SubmitTransactionData>> {
         return this.request<SubmitTransactionData>('/transaction/add', {
             method: 'POST',
             body: tx,
         });
+    }
+}
+
+/**
+ * Client for the legacy node (core/master, core/dev).
+ *
+ * That node speaks the V1 API generation: the chain head comes back flat,
+ * and it accepts one kind of transaction, a transfer.
+ */
+export class WarthogLegacyApi extends WarthogApiBase {
+    protected readonly version: WarthogApiVersion = 'v1';
+
+    /**
+     * Create a new client.
+     * @param baseUrl - Base URL of the Warthog node
+     */
+    constructor(baseUrl: string = KNOWN_NODES_LEGACY[0]) {
+        super(baseUrl);
     }
 
     /**
@@ -238,13 +278,57 @@ export class WarthogApi {
      * Fetches the current chain pin and wraps it.
      * @param fee - Transaction fee
      * @param nonceId - Unique nonce for the transaction
-     * @returns TransactionContext ready for building transactions
+     * @returns A context that can build the transactions this node accepts
      */
-    async createTransactionContext(fee: RoundedFee, nonceId: NonceId): Promise<TransactionContext> {
+    async createTransactionContext(
+        fee: RoundedFee,
+        nonceId: NonceId
+    ): Promise<WarthogLegacyTransactionContext> {
         const headResult = await this.getChainHead();
         if (!headResult.success) {
             throw new Error(headResult.error);
         }
-        return new TransactionContext(headResult.data.pin, fee, nonceId);
+        return new WarthogLegacyTransactionContext(headResult.data.pin, fee, nonceId);
     }
 }
+
+/**
+ * Client for the DeFi node (core/defi).
+ *
+ * That node speaks the V2 API generation: the chain head comes back nested
+ * under `chainHead`, and it accepts nine kinds of transaction.
+ */
+export class WarthogDeFiApi extends WarthogApiBase {
+    protected readonly version: WarthogApiVersion = 'v2';
+
+    /**
+     * Create a new client.
+     * @param baseUrl - Base URL of the Warthog node
+     */
+    constructor(baseUrl: string = KNOWN_NODES_DEFI[0]) {
+        super(baseUrl);
+    }
+
+    /**
+     * Create a transaction context for building transactions.
+     * Fetches the current chain pin and wraps it.
+     * @param fee - Transaction fee
+     * @param nonceId - Unique nonce for the transaction
+     * @returns A context that can build the transactions this node accepts
+     */
+    async createTransactionContext(
+        fee: RoundedFee,
+        nonceId: NonceId
+    ): Promise<WarthogDeFiTransactionContext> {
+        const headResult = await this.getChainHead();
+        if (!headResult.success) {
+            throw new Error(headResult.error);
+        }
+        return new WarthogDeFiTransactionContext(headResult.data.pin, fee, nonceId);
+    }
+}
+
+/**
+ * Either node client.
+ */
+export type AnyWarthogApi = WarthogLegacyApi | WarthogDeFiApi;

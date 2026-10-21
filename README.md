@@ -132,7 +132,7 @@ import {
     RoundedFee,
     Wart,
     NonceId,
-    WarthogApi
+    WarthogDeFiApi
 } from 'warthog-ts';
 
 // 1. Load your account
@@ -141,8 +141,10 @@ const account = Account.fromPrivateKeyHex('your-private-key');
 // 2. Prepare the recipient address
 const recipient = Address.fromHex('0000000000000000000000000000000000000000de47c9b2')!;
 
-// 3. Connect to the API
-const api = new WarthogApi('https://api.warthog.example');
+// 3. Connect to the API.
+//    There is a client per node family: WarthogDeFiApi for the DeFi node
+//    (core/defi) and WarthogLegacyApi for the legacy node (core/master).
+const api = new WarthogDeFiApi('https://warthog-defitestnet.duckdns.org');
 
 // 4. Create a transaction context (fetches chain pin automatically)
 const context = await api.createTransactionContext(
@@ -151,7 +153,7 @@ const context = await api.createTransactionContext(
 );
 
 // 5. Build the transaction
-const tx = context.wartTransfer(
+const tx = context.transferWart(
     account,         // Signing account
     recipient,       // Recipient address
     Wart.fromE8(100000000n)!  // 1 WART in E8
@@ -167,6 +169,10 @@ if (result.success) {
 ```
 
 ### Other Transaction Types
+
+These are the DeFi node's transaction types, so they exist on a
+`WarthogDeFiApi` context only. The legacy node accepts a transfer and nothing
+else, and its context has one builder, `transferWart`.
 
 ```typescript
 // Asset Transfer

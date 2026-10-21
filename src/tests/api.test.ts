@@ -1,6 +1,10 @@
 import { test, expect } from "bun:test";
 import { ChainPin } from "../types/ChainPin";
-import { ChainHead } from "../types/Api";
+import { ChainHead, WarthogDeFiApi, WarthogLegacyApi } from "../types/Api";
+import { Account } from "../types/Account";
+import { Address } from "../types/Address";
+import { NonceId } from "../types/NonceId";
+import { RoundedFee, Wart } from "../types/Funds";
 
 const PIN_HASH = "a".repeat(64);
 const CHAIN_HASH = "b".repeat(64);
@@ -126,4 +130,104 @@ test("ChainHead enforces height >= pinHeight", () => {
         "v1",
     )!;
     expect(ahead.height).toBeGreaterThanOrEqual(ahead.pin.pinHeight);
+});
+
+// --- The two node clients ----------------------------------------------------
+
+/** Serve one chain head payload and hand back the original fetch. */
+async function withChainHead(
+    payload: unknown,
+    run: () => Promise<void>,
+): Promise<void> {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ code: 0, data: payload }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        })) as unknown as typeof fetch;
+    try {
+        await run();
+    } finally {
+        globalThis.fetch = original;
+    }
+}
+
+test("the legacy client reads the flat chain head", async () => {
+    await withChainHead(V1_PAYLOAD, async () => {
+        const api = new WarthogLegacyApi("http://node.test");
+        const result = await api.getChainHead();
+
+        expect(result.success).toBe(true);
+        expect(result.success && result.data.pin).toEqual(
+            new ChainPin(PIN_HASH, 1949760),
+        );
+    });
+});
+
+test("the DeFi client reads the nested chain head", async () => {
+    await withChainHead(V2_PAYLOAD, async () => {
+        const api = new WarthogDeFiApi("http://node.test");
+        const result = await api.getChainHead();
+
+        expect(result.success).toBe(true);
+        expect(result.success && result.data.pin).toEqual(
+            new ChainPin(PIN_HASH, 1949760),
+        );
+    });
+});
+
+test("neither client reads the other generation's chain head", async () => {
+    await withChainHead(V2_PAYLOAD, async () => {
+        const result = await new WarthogLegacyApi("http://node.test").getChainHead();
+        expect(result.success).toBe(false);
+        expect(!result.success && result.error).toContain("Invalid v1");
+    });
+
+    await withChainHead(V1_PAYLOAD, async () => {
+        const result = await new WarthogDeFiApi("http://node.test").getChainHead();
+        expect(result.success).toBe(false);
+        expect(!result.success && result.error).toContain("Invalid v2");
+    });
+});
+
+test("the legacy client builds a legacy context", async () => {
+    await withChainHead(V1_PAYLOAD, async () => {
+        const api = new WarthogLegacyApi("http://node.test");
+        const context = await api.createTransactionContext(
+            RoundedFee.min(),
+            NonceId.fromNumber(1)!,
+        );
+
+        const tx = context.transferWart(
+            Account.fromPrivateKeyHex(
+                "966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0",
+            ),
+            Address.fromHex("0000000000000000000000000000000000000000de47c9b2")!,
+            Wart.fromE8(100000000n)!,
+        );
+
+        expect(tx.amountE8).toBe(100000000n);
+        expect("wartE8" in tx).toBe(false);
+    });
+});
+
+test("the DeFi client builds a DeFi context", async () => {
+    await withChainHead(V2_PAYLOAD, async () => {
+        const api = new WarthogDeFiApi("http://node.test");
+        const context = await api.createTransactionContext(
+            RoundedFee.min(),
+            NonceId.fromNumber(1)!,
+        );
+
+        const tx = context.transferWart(
+            Account.fromPrivateKeyHex(
+                "966a71a98bb5d13e9116c0dffa3f1a7877e45c6f563897b96cfd5c59bf0803e0",
+            ),
+            Address.fromHex("0000000000000000000000000000000000000000de47c9b2")!,
+            Wart.fromE8(100000000n)!,
+        );
+
+        expect(tx.wartE8).toBe(100000000n);
+        expect("amountE8" in tx).toBe(false);
+    });
 });

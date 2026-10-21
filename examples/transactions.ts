@@ -1,7 +1,7 @@
 import { Account } from '../src/types/Account';
 import { Address } from '../src/types/Address';
-import { WarthogApi } from '../src/types/Api';
-import { TransactionContext, type TransactionJson } from '../src/types/TransactionContext';
+import { WarthogDeFiApi } from '../src/types/Api';
+import { type TransactionJson } from '../src/types/TransactionContext';
 import { NonceId } from '../src/types/NonceId';
 import { Price } from '../src/types/Price';
 import { Funds, Liquidity, RoundedFee, TokenDecimals, Wart } from '../src/types/Funds';
@@ -20,8 +20,11 @@ console.log('Loaded Address:', existingAccount.address.hex);
 
 // Port 3100 is the testnet (core/defi) private RPC, which speaks the V2 API
 // generation — its `/chain/head` nests the pin under `chainHead`. Mainnet
-// (core/master, port 3000) speaks V1 and returns the same fields flat.
-const api = new WarthogApi('http://127.0.0.1:3100', { version: 'v2' });
+// (core/master, port 3000) speaks V1 and returns the same fields flat, and
+// is reached with `new WarthogLegacyApi(...)` instead. The two node families
+// are separate clients because they are separate APIs: the legacy node
+// accepts one kind of transaction, a transfer, and the DeFi node accepts nine.
+const api = new WarthogDeFiApi('http://127.0.0.1:3100');
 
 async function submit(txJson: TransactionJson) {
     const label = txJson.type;

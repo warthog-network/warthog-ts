@@ -253,13 +253,29 @@ wallet.deriveAccountAtIndex(index)
 
 ## Transaction Building
 
-### TransactionContext
+### Transaction Contexts
 **File:** `src/types/TransactionContext.ts`
 
-Creates signed transactions. Obtain via `WarthogApi.createTransactionContext()`.
+Creates signed transactions. There is one context per node family, because the
+two families accept different transaction sets.
+
+- `WarthogLegacyTransactionContext` is for the legacy node (core/master,
+  core/dev). That node's only transaction endpoint parses a single message
+  shape, a transfer, so this context has exactly one builder,
+  `transferWart`. The legacy node reads the amount from `amountE8`.
+- `WarthogDeFiTransactionContext` is for the DeFi node (core/defi), which
+  accepts nine transaction types. It has all nine builders, and its
+  `transferWart` reads the amount from `wartE8`, which is where the DeFi node
+  looks for it. `amountE8` means the liquidity share count on that node.
+
+The two are separate classes on purpose: a legacy context cannot build a
+limit swap, because the method does not exist on it. Both declare
+`transferWart(account, toAddr, wart)` with the same signature, so calling
+code that only sends WART can hold `AnyTransactionContext` and call it on
+whichever node it is talking to.
 
 ```typescript
-import { TransactionContext } from 'warthog-ts';
+import { WarthogDeFiTransactionContext } from 'warthog-ts';
 
 // WART transfer
 context.transferWart(
@@ -333,16 +349,25 @@ context.createAssets(
 
 ## API Communication
 
-### WarthogApi
+### Node Clients
 **File:** `src/types/Api.ts`
 
-Connects to Warthog node.
+Connects to a Warthog node. There is a client per node family, because the
+two families are separate APIs.
+
+- `WarthogLegacyApi` talks to the legacy node (core/master, core/dev). Its
+  `/chain/head` comes back flat, and it accepts one kind of transaction.
+- `WarthogDeFiApi` talks to the DeFi node (core/defi). Its `/chain/head`
+  comes back nested under `chainHead`, and it accepts nine kinds.
 
 ```typescript
-import { WarthogApi } from 'warthog-ts';
+import { WarthogDeFiApi, WarthogLegacyApi } from 'warthog-ts';
 
-// Connect to node
-const api = new WarthogApi('https://api.warthog.example');
+// Connect to a DeFi node
+const api = new WarthogDeFiApi('https://warthog-defitestnet.duckdns.org');
+
+// Connect to a legacy node
+const legacy = new WarthogLegacyApi('https://warthognode.duckdns.org');
 
 // Create transaction context (fetches chain pin)
 await api.createTransactionContext(fee, nonce)
@@ -350,15 +375,12 @@ await api.createTransactionContext(fee, nonce)
 // Submit transaction
 await api.submitTransaction(tx)
 
-// Get account balance
-await api.getBalance(address)
-
-// Get token balance
-await api.getTokenBalance(address, asset)
-
-// Get chain height
-await api.getHeight()
+// Get the chain head (normalized across generations)
+await api.getChainHead()
 ```
+
+The known node lists are split the same way: `KNOWN_NODES_LEGACY` and
+`KNOWN_NODES_DEFI`.
 
 ## Common Patterns
 
@@ -371,7 +393,7 @@ import {
     RoundedFee,
     Wart,
     NonceId,
-    WarthogApi
+    WarthogDeFiApi
 } from 'warthog-ts';
 
 // 1. Load account
@@ -381,7 +403,7 @@ const account = Account.fromPrivateKeyHex('private-key');
 const recipient = Address.fromHex('address-hex')!;
 
 // 3. Connect to API
-const api = new WarthogApi('https://api.warthog.example');
+const api = new WarthogDeFiApi('https://warthog-defitestnet.duckdns.org');
 
 // 4. Create transaction context
 const context = await api.createTransactionContext(
@@ -390,7 +412,7 @@ const context = await api.createTransactionContext(
 );
 
 // 5. Build and sign transaction
-const tx = context.wartTransfer(account, recipient, Wart.fromE8(100000000n)!);
+const tx = context.transferWart(account, recipient, Wart.fromE8(100000000n)!);
 
 // 6. Submit
 const result = await api.submitTransaction(tx);

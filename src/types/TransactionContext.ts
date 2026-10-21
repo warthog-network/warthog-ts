@@ -16,21 +16,31 @@ export interface TransactionJson extends Record<string, unknown> {
 }
 
 /**
- * Transaction builder for creating and signing Warthog transactions.
- * Obtained via WarthogApi.createTransactionContext().
+ * JSON representation of a signed transaction for the legacy node
+ * (core/master, core/dev).
  *
- * All properties (chainPin, fee, nonceId) can be modified. When reusing this
- * context for multiple transactions, you MUST change the nonceId for each new
- * transaction to prevent nonce collisions. The chainPin should typically remain
- * unchanged unless you need to refresh it from the network.
+ * These are exactly the fields that node reads from a submitted transaction:
+ * pinHeight, nonceId, feeE8, toAddr, amountE8 and signature65. It has no
+ * `type`, because the legacy node never looks at one: its only transaction
+ * endpoint parses a single message shape, a transfer.
  */
-export class TransactionContext {
-    /**
-     * Create a new transaction context.
-     * @param chainPin - Chain pin data from the network (can be refreshed)
-     * @param fee - Transaction fee (can be modified for priority transactions)
-     * @param nonceId - Unique nonce (must be changed for each new transaction)
-     */
+export type LegacyTransactionJson = {
+    pinHeight: number;
+    nonceId: number;
+    feeE8: bigint;
+    toAddr: string;
+    amountE8: bigint;
+    signature65: string;
+};
+
+/**
+ * State shared by both transaction contexts.
+ *
+ * The two node families accept different transaction sets, so the contexts
+ * are separate classes rather than one class with a version flag. What they
+ * share is the state and the bytes that get signed.
+ */
+abstract class TransactionContextBase {
     constructor(
         public chainPin: ChainPin,
         public fee: RoundedFee,
@@ -38,14 +48,14 @@ export class TransactionContext {
     ) {}
 
     /**
-     * Create a WART native token transfer transaction.
-     * @param account - Account signing the transaction
-     * @param toAddr - Recipient address
-     * @param wart - Amount in WART (E8)
-     * @returns Signed transaction JSON
+     * The bytes signed for a WART transfer.
+     *
+     * Both node families sign the same bytes for a transfer, so a signature
+     * produced for one is valid for the other. Only the JSON around it
+     * differs.
      */
-    transferWart(account: Account, toAddr: Address, wart: Wart): TransactionJson {
-        const binary = Buffer.concat([
+    protected wartTransferBytes(toAddr: Address, wart: Wart): Buffer {
+        return Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
             uint32BE(this.chainPin.pinHeight),
             uint32BE(this.nonceId.value),
@@ -54,7 +64,62 @@ export class TransactionContext {
             addressToBytes(toAddr.hex),
             uint64BE(wart.E8),
         ]);
-        const sig = account.signBytes(binary);
+    }
+}
+
+/**
+ * Transaction builder for the legacy node (core/master, core/dev).
+ *
+ * That node accepts one kind of transaction, a transfer, so this context
+ * offers one builder. The DeFi node accepts nine.
+ */
+export class WarthogLegacyTransactionContext extends TransactionContextBase {
+    /**
+     * Create a WART transfer transaction.
+     *
+     * The legacy node reads the amount from `amountE8`. The DeFi node reads
+     * it from `wartE8` and never looks at `amountE8`, where that name means
+     * the liquidity share count instead.
+     *
+     * @param account - Account signing the transaction
+     * @param toAddr - Recipient address
+     * @param wart - Amount in WART (E8)
+     * @returns Signed transaction JSON
+     */
+    public transferWart(account: Account, toAddr: Address, wart: Wart): LegacyTransactionJson {
+        const sig = account.signBytes(this.wartTransferBytes(toAddr, wart));
+
+        return {
+            pinHeight: this.chainPin.pinHeight,
+            nonceId: this.nonceId.value,
+            feeE8: this.fee.E8,
+            toAddr: toAddr.hex,
+            amountE8: wart.E8,
+            signature65: sig.signature,
+        };
+    }
+}
+
+/**
+ * Transaction builder for the DeFi node (core/defi).
+ *
+ * Obtained via `WarthogDeFiApi.createTransactionContext()`.
+ *
+ * All properties (chainPin, fee, nonceId) can be modified. When reusing this
+ * context for multiple transactions, you MUST change the nonceId for each new
+ * transaction to prevent nonce collisions. The chainPin should typically remain
+ * unchanged unless you need to refresh it from the network.
+ */
+export class WarthogDeFiTransactionContext extends TransactionContextBase {
+    /**
+     * Create a WART native token transfer transaction.
+     * @param account - Account signing the transaction
+     * @param toAddr - Recipient address
+     * @param wart - Amount in WART (E8)
+     * @returns Signed transaction JSON
+     */
+    public transferWart(account: Account, toAddr: Address, wart: Wart): TransactionJson {
+        const sig = account.signBytes(this.wartTransferBytes(toAddr, wart));
 
         return {
             type: 'wartTransfer',
@@ -75,7 +140,7 @@ export class TransactionContext {
      * @param amount - Amount in token units
      * @returns Signed transaction JSON
      */
-    transferAsset(
+    public transferAsset(
         account: Account,
         assetHash: string,
         toAddr: Address,
@@ -92,7 +157,7 @@ export class TransactionContext {
      * @param units - Liquidity units to transfer
      * @returns Signed transaction JSON
      */
-    transferLiquidity(
+    public transferLiquidity(
         account: Account,
         assetHash: string,
         toAddr: Address,
@@ -151,19 +216,19 @@ export class TransactionContext {
      * @param limit - Limit price as Price object
      * @returns Signed transaction JSON
      */
-    buy(account: Account, assetHash: string, wartAmount: Wart, limit: Price): TransactionJson {
+    public buy(account: Account, assetHash: string, wartAmount: Wart, limit: Price): TransactionJson {
         return this.limitSwapInternal(account, assetHash, true, wartAmount.E8, limit);
     }
 
     /**
-     * Create a limit sell transaction (sell token for WART).
+     * Create a limit sell transaction (sell tokens for WART).
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
      * @param tokenAmount - Token amount to sell
      * @param limit - Limit price as Price object
      * @returns Signed transaction JSON
      */
-    sell(account: Account, assetHash: string, tokenAmount: Funds, limit: Price): TransactionJson {
+    public sell(account: Account, assetHash: string, tokenAmount: Funds, limit: Price): TransactionJson {
         return this.limitSwapInternal(account, assetHash, false, tokenAmount.amount, limit);
     }
 
@@ -217,7 +282,7 @@ export class TransactionContext {
      * @param wart - WART amount to deposit
      * @returns Signed transaction JSON
      */
-    depositLiquidity(
+    public depositLiquidity(
         account: Account,
         assetHash: string,
         tokenAmount: Funds,
@@ -241,7 +306,7 @@ export class TransactionContext {
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
-            amountU64: tokenAmount.amount,
+            amountE8: tokenAmount.amount,
             wartE8: wart.E8,
             signature65: sig.signature,
         };
@@ -254,7 +319,7 @@ export class TransactionContext {
      * @param units - Liquidity units to withdraw
      * @returns Signed transaction JSON
      */
-    withdrawLiquidity(
+    public withdrawLiquidity(
         account: Account,
         assetHash: string,
         units: Liquidity
@@ -288,7 +353,7 @@ export class TransactionContext {
      * @param cancelNonceId - NonceId of the order to cancel
      * @returns Signed transaction JSON
      */
-    cancelTransaction(
+    public cancelTransaction(
         account: Account,
         cancelHeight: number,
         cancelNonceId: NonceId
@@ -323,7 +388,7 @@ export class TransactionContext {
      * @param name - Token name (max 5 ASCII characters)
      * @returns Signed transaction JSON
      */
-    createAssets(
+    public createAssets(
         account: Account,
         totalSupply: Funds,
         decimals: TokenDecimals,
@@ -355,6 +420,17 @@ export class TransactionContext {
         };
     }
 }
+
+/**
+ * Either transaction context.
+ *
+ * Calling code that only builds WART transfers can hold this type and call
+ * `transferWart` on it, whichever node it is talking to. The DeFi-only
+ * builders need the concrete `WarthogDeFiTransactionContext`.
+ */
+export type AnyTransactionContext =
+    | WarthogLegacyTransactionContext
+    | WarthogDeFiTransactionContext;
 
 function uint32BE(value: number): Buffer {
     const buf = Buffer.alloc(UINT32_BE_BYTES);
