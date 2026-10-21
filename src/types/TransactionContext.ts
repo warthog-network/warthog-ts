@@ -276,6 +276,11 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
 
     /**
      * Create a liquidity deposit transaction (add tokens + WART to liquidity pool).
+     *
+     * The amount is the token amount, which the DeFi node reads from
+     * `amountU64`. The liquidity share count is what a withdrawal carries,
+     * in `amountE8`.
+     *
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
      * @param tokenAmount - Token amount to deposit
@@ -306,7 +311,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
             nonceId: this.nonceId.value,
             feeE8: this.fee.E8,
             assetHash,
-            amountE8: tokenAmount.amount,
+            amountU64: tokenAmount.amount,
             wartE8: wart.E8,
             signature65: sig.signature,
         };

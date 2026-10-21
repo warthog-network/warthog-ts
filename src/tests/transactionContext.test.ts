@@ -126,6 +126,21 @@ test("the legacy context cannot build the transactions the DeFi node takes", () 
     ]);
 });
 
+test("the liquidity deposit carries the token amount as amountU64", () => {
+    // The DeFi node reads a deposit's token amount from amountU64. The name
+    // amountE8 means the liquidity share count, which is what a withdrawal
+    // carries.
+    const ctx = defi();
+    const account = Account.fromPrivateKeyHex(PRIVATE_KEY);
+    const funds = Funds.parse("1000", TokenDecimals.WART)!;
+
+    const tx = ctx.depositLiquidity(account, ASSET_HASH, funds, Wart.fromE8(100000000n)!);
+    expect(tx.type).toBe("liquidityDeposit");
+    expect(tx.amountU64).toBe(funds.amount);
+    expect(tx.amountE8).toBeUndefined();
+    expect(tx.wartE8).toBe(100000000n);
+});
+
 test("the DeFi context keeps every builder", () => {
     const ctx = defi();
     const account = Account.fromPrivateKeyHex(PRIVATE_KEY);
