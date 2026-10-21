@@ -4,8 +4,9 @@ import {
 } from './TransactionContext';
 import type { LegacyTransactionJson, TransactionJson } from './TransactionContext';
 import { NonceId } from './NonceId';
-import { RoundedFee } from './Funds';
+import { RoundedFee, Wart } from './Funds';
 import { ChainPin, chainHeadSource } from './ChainPin';
+import { DeFiWartBalance, TokenBalance } from './Balance';
 
 /**
  * Known legacy nodes (core/master, core/dev).
@@ -176,7 +177,7 @@ export abstract class WarthogApiBase {
      * @param options - Request options
      * @returns API result
      */
-    private async request<T>(path: string, options?: RequestOptions): Promise<ApiResult<T>> {
+    protected async request<T>(path: string, options?: RequestOptions): Promise<ApiResult<T>> {
         let url = `${this.baseUrl}${path}`;
 
         if (options?.queryParams) {
@@ -290,6 +291,35 @@ export class WarthogLegacyApi extends WarthogApiBase {
         }
         return new WarthogLegacyTransactionContext(headResult.data.pin, fee, nonceId);
     }
+
+    /**
+     * Get the WART balance of an account.
+     *
+     * The legacy node reports one number: the confirmed balance. It has no
+     * limit orders, and it does not report what pending transactions lock,
+     * so there is no split to make.
+     *
+     * @param address - Account address, hex
+     * @returns The balance, or an error result
+     */
+    async getWartBalance(address: string): Promise<ApiResult<Wart>> {
+        const result = await this.request<unknown>(`/account/${address}/balance`);
+        if (!result.success) {
+            return result;
+        }
+
+        const balance = (result.data as { balance?: unknown } | null)?.balance;
+        const wart = typeof balance === 'string' ? Wart.parse(balance) : null;
+        if (!wart) {
+            return {
+                success: false,
+                code: -1,
+                error: 'Invalid balance response',
+            };
+        }
+
+        return { success: true, data: wart };
+    }
 }
 
 /**
@@ -325,6 +355,62 @@ export class WarthogDeFiApi extends WarthogApiBase {
             throw new Error(headResult.error);
         }
         return new WarthogDeFiTransactionContext(headResult.data.pin, fee, nonceId);
+    }
+
+    /**
+     * Get the WART balance of an account.
+     *
+     * The DeFi node reports the balance three ways: the total, what is
+     * locked in open limit orders, and what is locked by transactions in the
+     * mempool.
+     *
+     * @param address - Account address, hex
+     * @returns The balance, or an error result
+     */
+    async getWartBalance(address: string): Promise<ApiResult<DeFiWartBalance>> {
+        const result = await this.request<unknown>(`/account/${address}/wart_balance`);
+        if (!result.success) {
+            return result;
+        }
+
+        const balance = DeFiWartBalance.parse(result.data);
+        if (!balance) {
+            return {
+                success: false,
+                code: -1,
+                error: 'Invalid balance response',
+            };
+        }
+
+        return { success: true, data: balance };
+    }
+
+    /**
+     * Get the balance of a token an account holds.
+     *
+     * @param address - Account address, hex
+     * @param assetHash - Asset hash, hex
+     * @returns The balance, or an error result
+     */
+    async getTokenBalance(address: string, assetHash: string): Promise<ApiResult<TokenBalance>> {
+        const hash = assetHash.replace(/^0x/i, '').toLowerCase();
+        const result = await this.request<unknown>(
+            `/account/${address}/balance/asset:${hash}`,
+        );
+        if (!result.success) {
+            return result;
+        }
+
+        const balance = TokenBalance.parse(result.data);
+        if (!balance) {
+            return {
+                success: false,
+                code: -1,
+                error: 'Invalid balance response',
+            };
+        }
+
+        return { success: true, data: balance };
     }
 }
 

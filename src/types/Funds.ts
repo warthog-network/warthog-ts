@@ -137,6 +137,24 @@ export class Funds {
         if (value === null) return null;
         return new Funds(value);
     }
+
+    /**
+     * Create Funds from a raw amount in the token's smallest units.
+     *
+     * The decimals are not part of a Funds: they only matter when a decimal
+     * string is scaled into the token's units, which `parse` does. Use this
+     * when the amount is already scaled, for example when it comes from a
+     * node that reports it.
+     *
+     * @param amount - Amount in the token's smallest units
+     * @returns Funds or null if invalid (negative or exceeds MAX_U64)
+     */
+    public static fromAmount(amount: bigint): Funds | null {
+        if (amount < 0n || amount > MAX_U64) {
+            return null;
+        }
+        return new Funds(amount);
+    }
 }
 
 /**

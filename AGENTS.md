@@ -35,13 +35,21 @@ Address.validate('0000000000000000000000000000000000000000de47c9b2')
 
 Every transaction needs a unique nonce (32-bit unsigned integer: 0 to 4,294,967,295).
 
+The nonce is a replay tag, not a counter. A transaction is identified by its
+`(account, pin height, nonce)` triple, and the only check a node makes is
+that it has not seen that triple before: a repeat is rejected with `ENONCE`,
+unless the new transaction pays a higher fee, in which case it replaces the
+old one. The nonce does not have to increase, and no node reports an
+account's next nonce, so there is nothing to fetch and nothing to track.
+`NonceId.random()` is the intended way to pick one.
+
 ```typescript
 import { NonceId } from 'warthog-ts';
 
 // Create from number (validates 32-bit range)
 NonceId.fromNumber(12345)
 
-// Generate random nonce
+// Generate random nonce. This is what a client should use.
 NonceId.random()
 
 // Validate any number
@@ -377,6 +385,16 @@ await api.submitTransaction(tx)
 
 // Get the chain head (normalized across generations)
 await api.getChainHead()
+
+// Get the WART balance of an account.
+// The legacy node reports one number, the confirmed balance. The DeFi node
+// reports the total, what is locked in open limit orders, and what is locked
+// by transactions in the mempool.
+await legacy.getWartBalance(address)
+await api.getWartBalance(address)
+
+// Get a token balance. The DeFi node only, the legacy node has no tokens.
+await api.getTokenBalance(address, assetHash)
 ```
 
 The known node lists are split the same way: `KNOWN_NODES_LEGACY` and

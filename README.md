@@ -106,6 +106,13 @@ const asWart = fee.toWart();
 
 Every transaction needs a unique nonce (32-bit unsigned integer).
 
+The nonce is a replay tag, not a counter. A transaction is identified by its
+`(account, pin height, nonce)` triple, and the only check a node makes is
+that it has not seen that triple before, rejecting a repeat with `ENONCE`.
+The nonce does not have to increase, and no node reports an account's next
+nonce, so there is nothing to fetch and nothing to track. Use the random
+one.
+
 ```typescript
 import { NonceId } from 'warthog-ts';
 
@@ -113,12 +120,37 @@ import { NonceId } from 'warthog-ts';
 const nonce = NonceId.fromNumber(12345);
 // Returns null if out of range
 
-// Generate a random nonce
+// Generate a random nonce. This is what a client should use.
 const randomNonce = NonceId.random();
 
 // Validate any number
 const isValid = NonceId.validate(12345);
 console.log('Valid:', isValid);  // true
+```
+
+### Balances
+
+Each node family reports balances its own way, so each client has its own
+balance methods.
+
+```typescript
+// The legacy node reports one number: the confirmed balance.
+const balance = await new WarthogLegacyApi(url).getWartBalance(address);
+balance.E8;   // bigint
+
+// The DeFi node splits it three ways.
+const defi = await new WarthogDeFiApi(url).getWartBalance(address);
+defi.total.E8;      // what the account owns
+defi.locked.E8;     // locked in open limit orders
+defi.mempool.E8;    // locked by transactions in the mempool
+defi.free().E8;     // what can be spent now
+
+// Token balances are the DeFi node's alone.
+const hog = await new WarthogDeFiApi(url).getTokenBalance(address, assetHash);
+hog.name;             // token name
+hog.decimals.decimals;  // token decimals
+hog.total.amount;     // what the account owns
+hog.free().amount;    // what can be spent now
 ```
 
 ### Full Transaction Flow
