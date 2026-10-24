@@ -231,3 +231,64 @@ test("the DeFi client builds a DeFi context", async () => {
         expect("amountE8" in tx).toBe(false);
     });
 });
+
+
+// --- The raw request ---------------------------------------------------------
+
+/** Serve one payload, recording the URL that was requested. */
+async function withPayload(
+    payload: unknown,
+    run: (requestedUrls: string[]) => Promise<void>,
+): Promise<void> {
+    const original = globalThis.fetch;
+    const requestedUrls: string[] = [];
+    globalThis.fetch = (async (url: string | URL | Request) => {
+        requestedUrls.push(String(url));
+        return new Response(JSON.stringify({ code: 0, data: payload }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        });
+    }) as unknown as typeof fetch;
+    try {
+        await run(requestedUrls);
+    } finally {
+        globalThis.fetch = original;
+    }
+}
+
+// --- Transaction submission --------------------------------------------------
+
+/** A signed transaction body, as the node would receive it. */
+const SIGNED_TX = {
+    type: "transferWart",
+    nonceId: 1,
+    sender: "0000000000000000000000000000000000000000de47c9b2",
+    recipient: "0000000000000000000000000000000000000000de47c9b3",
+    wartE8: 100000000n,
+    signature: "aa".repeat(65),
+};
+
+test("submitting a transaction posts it and returns the hash", async () => {
+    await withPayload({ txHash: "ab".repeat(32) }, async (urls) => {
+        const api = new WarthogDeFiApi("http://node.test");
+        const result = await api.submitTransaction(
+            SIGNED_TX as unknown as Parameters<typeof api.submitTransaction>[0],
+        );
+
+        expect(urls).toEqual(["http://node.test/transaction/add"]);
+        expect(result.success).toBe(true);
+        expect(result.success && result.data.txHash).toBe("ab".repeat(32));
+    });
+});
+
+test("submitting a transaction reports a response without a hash as an error", async () => {
+    await withPayload({ notATxHash: "ab".repeat(32) }, async () => {
+        const api = new WarthogDeFiApi("http://node.test");
+        const result = await api.submitTransaction(
+            SIGNED_TX as unknown as Parameters<typeof api.submitTransaction>[0],
+        );
+
+        expect(result.success).toBe(false);
+        expect(!result.success && result.error).toContain("Invalid transaction add");
+    });
+});

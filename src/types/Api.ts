@@ -172,12 +172,24 @@ export abstract class WarthogApiBase {
     constructor(public readonly baseUrl: string) {}
 
     /**
-     * Make an HTTP request to the API.
+     * Make an HTTP request to the API and hand back the raw payload.
+     *
+     * The payload comes off the wire, so it is `unknown`: nothing has checked
+     * it yet. A caller that needs a typed value parses the result itself,
+     * which is what the `parse` methods on the types in this package are for.
+     *
+     * This is deliberately not generic. A generic `request<T>` would let a
+     * caller name any type and get a cast rather than a check, which is a
+     * promise the node does not make.
+     *
      * @param path - API endpoint path
      * @param options - Request options
-     * @returns API result
+     * @returns API result, with the payload left unvalidated
      */
-    protected async request<T>(path: string, options?: RequestOptions): Promise<ApiResult<T>> {
+    protected async requestRaw(
+        path: string,
+        options?: RequestOptions
+    ): Promise<ApiResult<unknown>> {
         let url = `${this.baseUrl}${path}`;
 
         if (options?.queryParams) {
@@ -204,7 +216,7 @@ export abstract class WarthogApiBase {
         });
 
         const text = await response.text();
-        const json = JSON.parse(text) as { code: number; data?: T; error?: string };
+        const json = JSON.parse(text) as { code: number; data?: unknown; error?: string };
 
         if (json.code !== 0) {
             return {
@@ -214,7 +226,7 @@ export abstract class WarthogApiBase {
             };
         }
 
-        return { success: true, data: json.data as T };
+        return { success: true, data: json.data };
     }
 
     /**
@@ -225,7 +237,7 @@ export abstract class WarthogApiBase {
      *   match this client's generation.
      */
     async getChainHead(): Promise<ApiResult<ChainHead>> {
-        const result = await this.request<unknown>('/chain/head');
+        const result = await this.requestRaw('/chain/head');
         if (!result.success) {
             return result;
         }
@@ -250,10 +262,24 @@ export abstract class WarthogApiBase {
     async submitTransaction(
         tx: TransactionJson | LegacyTransactionJson
     ): Promise<ApiResult<SubmitTransactionData>> {
-        return this.request<SubmitTransactionData>('/transaction/add', {
+        const result = await this.requestRaw('/transaction/add', {
             method: 'POST',
             body: tx,
         });
+        if (!result.success) {
+            return result;
+        }
+
+        const txHash = (result.data as { txHash?: unknown } | null)?.txHash;
+        if (typeof txHash !== 'string') {
+            return {
+                success: false,
+                code: -1,
+                error: 'Invalid transaction add response',
+            };
+        }
+
+        return { success: true, data: { txHash } };
     }
 }
 
@@ -303,7 +329,7 @@ export class WarthogLegacyApi extends WarthogApiBase {
      * @returns The balance, or an error result
      */
     async getWartBalance(address: string): Promise<ApiResult<Wart>> {
-        const result = await this.request<unknown>(`/account/${address}/balance`);
+        const result = await this.requestRaw(`/account/${address}/balance`);
         if (!result.success) {
             return result;
         }
@@ -368,7 +394,7 @@ export class WarthogDeFiApi extends WarthogApiBase {
      * @returns The balance, or an error result
      */
     async getWartBalance(address: string): Promise<ApiResult<DeFiWartBalance>> {
-        const result = await this.request<unknown>(`/account/${address}/wart_balance`);
+        const result = await this.requestRaw(`/account/${address}/wart_balance`);
         if (!result.success) {
             return result;
         }
@@ -394,7 +420,7 @@ export class WarthogDeFiApi extends WarthogApiBase {
      */
     async getTokenBalance(address: string, assetHash: string): Promise<ApiResult<TokenBalance>> {
         const hash = assetHash.replace(/^0x/i, '').toLowerCase();
-        const result = await this.request<unknown>(
+        const result = await this.requestRaw(
             `/account/${address}/balance/asset:${hash}`,
         );
         if (!result.success) {
