@@ -7,6 +7,7 @@ import { NonceId } from './NonceId';
 import { RoundedFee, Wart } from './Funds';
 import { ChainPin, chainHeadSource } from './ChainPin';
 import { DeFiWartBalance, TokenBalance } from './Balance';
+import { NodeVersion } from './NodeVersion';
 
 /**
  * Known legacy nodes (core/master, core/dev).
@@ -281,6 +282,34 @@ export abstract class WarthogApiBase {
 
         return { success: true, data: { txHash } };
     }
+
+    /**
+     * Fetch the node's version from whichever endpoint serves it.
+     *
+     * Every node family reports the same five fields in the same flat shape,
+     * so the parsing is shared. Only the path differs, and that is what the
+     * caller passes in.
+     *
+     * @param path - The endpoint the node family serves the version on.
+     * @returns The node version, or an error result
+     */
+    protected async fetchNodeVersion(path: string): Promise<ApiResult<NodeVersion>> {
+        const result = await this.requestRaw(path);
+        if (!result.success) {
+            return result;
+        }
+
+        const version = NodeVersion.parse(result.data);
+        if (!version) {
+            return {
+                success: false,
+                code: -1,
+                error: 'Invalid node version response',
+            };
+        }
+
+        return { success: true, data: version };
+    }
 }
 
 /**
@@ -345,6 +374,17 @@ export class WarthogLegacyApi extends WarthogApiBase {
         }
 
         return { success: true, data: wart };
+    }
+
+    /**
+     * Get the version of the node.
+     *
+     * The legacy node serves it on `/tools/version`.
+     *
+     * @returns The node version, or an error result
+     */
+    async getNodeVersion(): Promise<ApiResult<NodeVersion>> {
+        return this.fetchNodeVersion('/tools/version');
     }
 }
 
@@ -437,6 +477,18 @@ export class WarthogDeFiApi extends WarthogApiBase {
         }
 
         return { success: true, data: balance };
+    }
+
+    /**
+     * Get the version of the node.
+     *
+     * The DeFi node serves it on `/version`, not on `/tools/version` like the
+     * legacy node does. The payload is the same either way.
+     *
+     * @returns The node version, or an error result
+     */
+    async getNodeVersion(): Promise<ApiResult<NodeVersion>> {
+        return this.fetchNodeVersion('/version');
     }
 }
 

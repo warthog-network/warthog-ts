@@ -153,6 +153,25 @@ tokenBalance.total.amount; // what the account owns
 tokenBalance.free().amount; // what can be spent now
 ```
 
+### Node Version
+
+Ask a node which version it is running.
+
+```typescript
+// Both node families report the same fields, on different paths.
+const legacy = await new WarthogLegacyApi(url).getNodeVersion();  // /tools/version
+const defi = await new WarthogDeFiApi(url).getNodeVersion();      // /version
+
+if (defi.success) {
+    defi.data.name;    // 'v0.10.3 "dd054a2"', the version string with the commit
+    defi.data.major;   // 0
+    defi.data.minor;   // 10
+    defi.data.patch;   // 3
+    defi.data.commit;  // 'dd054a2'
+    defi.data.version; // '0.10.3', the dotted triple
+}
+```
+
 ### Full Transaction Flow
 
 Putting it all together - create and submit a transaction:

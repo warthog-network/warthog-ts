@@ -395,10 +395,47 @@ await api.getWartBalance(address)
 
 // Get a token balance. The DeFi node only, the legacy node has no tokens.
 await api.getTokenBalance(address, assetHash)
+
+// Get the version of the node.
+await legacy.getNodeVersion()
+await api.getNodeVersion()
 ```
 
 The known node lists are split the same way: `KNOWN_NODES_LEGACY` and
 `KNOWN_NODES_DEFI`.
+
+### Node Version
+**File:** `src/types/NodeVersion.ts`
+
+The version a node reports about itself. `NodeVersion.parse` reads the
+payload, and returns null when a field is missing or has the wrong type.
+
+```typescript
+import { NodeVersion } from 'warthog-ts';
+
+const version = await new WarthogDeFiApi(url).getNodeVersion();
+
+if (version.success) {
+    version.data.name;    // 'v0.10.3 "dd054a2"'
+    version.data.major;   // 0
+    version.data.minor;   // 10
+    version.data.patch;   // 3
+    version.data.commit;  // 'dd054a2'
+    version.data.version; // '0.10.3', the dotted triple
+}
+```
+
+**The path differs per family, the payload does not.** The legacy node
+(core/master, core/dev) serves the version on `/tools/version`; the DeFi node
+(core/defi) serves it on `/version`. Both report the same five fields in the
+same flat shape, so there is one parser and one shared fetch helper
+(`WarthogApiBase.fetchNodeVersion`), and each client only states its own
+path. This is unlike `/chain/head`, which differs in shape between the two
+generations and so needs a `WarthogApiVersion` argument.
+
+Do not confuse this with `GET /tools/info`, which the SDK does not call. It
+is absent on core/master, private on core/defi, and its shape differs between
+core/dev (flat) and core/defi (nested glaze `NodeInfoResult`).
 
 ## Common Patterns
 

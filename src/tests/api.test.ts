@@ -5,6 +5,7 @@ import { Account } from "../types/Account";
 import { Address } from "../types/Address";
 import { NonceId } from "../types/NonceId";
 import { RoundedFee, Wart } from "../types/Funds";
+import { NodeVersion } from "../types/NodeVersion";
 
 const PIN_HASH = "a".repeat(64);
 const CHAIN_HASH = "b".repeat(64);
@@ -232,8 +233,56 @@ test("the DeFi client builds a DeFi context", async () => {
     });
 });
 
+// --- NodeVersion -------------------------------------------------------------
 
-// --- The raw request ---------------------------------------------------------
+// The version payload. Every node family reports these five fields in this
+// flat shape, so one fixture covers all of them.
+const VERSION_PAYLOAD = {
+    name: 'v0.10.3 "dd054a2"',
+    major: 0,
+    minor: 10,
+    patch: 3,
+    commit: "dd054a2",
+};
+
+test("NodeVersion.parse reads the version fields", () => {
+    const version = NodeVersion.parse(VERSION_PAYLOAD);
+
+    expect(version).not.toBeNull();
+    expect(version!.name).toBe('v0.10.3 "dd054a2"');
+    expect(version!.major).toBe(0);
+    expect(version!.minor).toBe(10);
+    expect(version!.patch).toBe(3);
+    expect(version!.commit).toBe("dd054a2");
+});
+
+test("NodeVersion exposes the version as a dotted triple", () => {
+    expect(NodeVersion.parse(VERSION_PAYLOAD)!.version).toBe("0.10.3");
+});
+
+test("NodeVersion.parse returns null when a field is missing", () => {
+    for (const field of ["name", "major", "minor", "patch", "commit"]) {
+        const payload: Record<string, unknown> = { ...VERSION_PAYLOAD };
+        delete payload[field];
+        expect(NodeVersion.parse(payload)).toBeNull();
+    }
+});
+
+test("NodeVersion.parse returns null when a field has the wrong type", () => {
+    expect(NodeVersion.parse({ ...VERSION_PAYLOAD, name: 42 })).toBeNull();
+    expect(NodeVersion.parse({ ...VERSION_PAYLOAD, commit: 42 })).toBeNull();
+    expect(NodeVersion.parse({ ...VERSION_PAYLOAD, major: "0" })).toBeNull();
+    expect(NodeVersion.parse({ ...VERSION_PAYLOAD, minor: "10" })).toBeNull();
+    expect(NodeVersion.parse({ ...VERSION_PAYLOAD, patch: "3" })).toBeNull();
+});
+
+test("NodeVersion.parse returns null for absent or malformed payloads", () => {
+    for (const bad of [undefined, null, "garbage", 42, [], {}]) {
+        expect(NodeVersion.parse(bad)).toBeNull();
+    }
+});
+
+// --- The node version endpoint -----------------------------------------------
 
 /** Serve one payload, recording the URL that was requested. */
 async function withPayload(
@@ -255,6 +304,52 @@ async function withPayload(
         globalThis.fetch = original;
     }
 }
+
+test("the legacy client reads the version from /tools/version", async () => {
+    await withPayload(VERSION_PAYLOAD, async (urls) => {
+        const api = new WarthogLegacyApi("http://node.test");
+        const result = await api.getNodeVersion();
+
+        expect(urls).toEqual(["http://node.test/tools/version"]);
+        expect(result.success).toBe(true);
+        expect(result.success && result.data.version).toBe("0.10.3");
+    });
+});
+
+test("the DeFi client reads the version from /version", async () => {
+    await withPayload(VERSION_PAYLOAD, async (urls) => {
+        const api = new WarthogDeFiApi("http://node.test");
+        const result = await api.getNodeVersion();
+
+        expect(urls).toEqual(["http://node.test/version"]);
+        expect(result.success).toBe(true);
+        expect(result.success && result.data.version).toBe("0.10.3");
+    });
+});
+
+test("both clients read the same version payload identically", async () => {
+    await withPayload(VERSION_PAYLOAD, async () => {
+        const legacy = await new WarthogLegacyApi("http://node.test").getNodeVersion();
+        const defi = await new WarthogDeFiApi("http://node.test").getNodeVersion();
+
+        expect(legacy.success).toBe(true);
+        expect(defi.success).toBe(true);
+        if (!legacy.success || !defi.success) {
+            return;
+        }
+        // The path differs, the payload does not.
+        expect(legacy.data).toEqual(defi.data);
+    });
+});
+
+test("the node version call reports a malformed payload as an error", async () => {
+    await withPayload({ name: "v0.10.3" }, async () => {
+        const result = await new WarthogDeFiApi("http://node.test").getNodeVersion();
+
+        expect(result.success).toBe(false);
+        expect(!result.success && result.error).toContain("Invalid node version");
+    });
+});
 
 // --- Transaction submission --------------------------------------------------
 
