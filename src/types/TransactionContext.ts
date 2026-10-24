@@ -172,7 +172,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
      * @param assetHash - Asset hash as hex string
      * @param isLiquidity - Whether this transfer is for an asset's liquidity or the asset itself
      * @param toAddr - Recipient address
-     * @param amountE8 - Amount in E8
+     * @param amountU64 - Amount, in token units, or in liquidity units when `isLiquidity` is set
      * @returns Signed transaction JSON
      */
     private tokenTransferInternal(
@@ -180,7 +180,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
         assetHash: string,
         isLiquidity: boolean,
         toAddr: Address,
-        amountE8: bigint
+        amountU64: bigint
     ): TransactionJson {
         const binary = Buffer.concat([
             hashToBytes(this.chainPin.pinHash),
@@ -191,7 +191,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
             hashToBytes(assetHash),
             Buffer.from([isLiquidity ? 1 : 0]),
             addressToBytes(toAddr.hex),
-            uint64BE(amountE8),
+            uint64BE(amountU64),
         ]);
         const sig = account.signBytes(binary);
 
@@ -203,7 +203,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
             assetHash,
             isLiquidity,
             toAddr: toAddr.hex,
-            amountU64: amountE8,
+            amountU64: amountU64,
             signature65: sig.signature,
         };
     }
@@ -237,7 +237,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
      * @param account - Account signing the transaction
      * @param assetHash - Asset hash as hex string
      * @param isBuy - True to buy token with WART, false to sell token for WART
-     * @param amountE8 - Amount in E8 (token units for sell, WART E8 for buy)
+     * @param amountU64 - Amount, in WART E8 for a buy and in token units for a sell
      * @param limit - Limit price as Price object
      * @returns Signed transaction JSON
      */
@@ -245,7 +245,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
         account: Account,
         assetHash: string,
         isBuy: boolean,
-        amountE8: bigint,
+        amountU64: bigint,
         limit: Price
     ): TransactionJson {
         const binary = Buffer.concat([
@@ -256,7 +256,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
             uint64BE(this.fee.E8),
             hashToBytes(assetHash),
             Buffer.from([isBuy ? 1 : 0]),
-            uint64BE(amountE8),
+            uint64BE(amountU64),
             Buffer.from(limit.toHex(), 'hex'),
         ]);
         const sig = account.signBytes(binary);
@@ -268,7 +268,7 @@ export class WarthogDeFiTransactionContext extends TransactionContextBase {
             feeE8: this.fee.E8,
             assetHash,
             isBuy,
-            amountU64: amountE8,
+            amountU64: amountU64,
             limit: limit.toHex(),
             signature65: sig.signature,
         };
