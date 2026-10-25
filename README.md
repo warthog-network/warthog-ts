@@ -172,6 +172,26 @@ if (defi.success) {
 }
 ```
 
+### Custom Transport
+
+By default every request goes through the global `fetch`. A client can be
+given a different transport, which is how you run the SDK somewhere the
+global `fetch` does not go: a browser extension that has to route through a
+background worker, or a test that wants to count requests.
+
+```typescript
+const api = new WarthogDeFiApi(url, {
+    fetch: async (url, init) => {
+        // Your transport here. It must return a Response.
+        return myFetch(url, init);
+    },
+});
+```
+
+The transport is used for the request only, and there is no fallback. If it
+throws, the call rejects, so a failure is never silently retried somewhere
+else.
+
 ### Full Transaction Flow
 
 Putting it all together - create and submit a transaction:

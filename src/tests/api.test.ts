@@ -387,3 +387,115 @@ test("submitting a transaction reports a response without a hash as an error", a
         expect(!result.success && result.error).toContain("Invalid transaction add");
     });
 });
+
+// --- The transport ------------------------------------------------------------
+
+test("a client uses the transport it was given, not the global fetch", async () => {
+    const original = globalThis.fetch;
+    let globalCalled = false;
+    globalThis.fetch = (async () => {
+        globalCalled = true;
+        throw new Error("the global fetch should not be used");
+    }) as unknown as typeof fetch;
+
+    try {
+        const requested: string[] = [];
+        const api = new WarthogDeFiApi("http://node.test", {
+            fetch: async (url) => {
+                requested.push(url);
+                return new Response(JSON.stringify({ code: 0, data: VERSION_PAYLOAD }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            },
+        });
+
+        const result = await api.getNodeVersion();
+
+        expect(globalCalled).toBe(false);
+        expect(requested).toEqual(["http://node.test/version"]);
+        expect(result.success).toBe(true);
+        expect(result.success && result.data.version).toBe("0.10.3");
+    } finally {
+        globalThis.fetch = original;
+    }
+});
+
+test("a client without a transport uses the global fetch", async () => {
+    const original = globalThis.fetch;
+    const requested: string[] = [];
+    globalThis.fetch = (async (url: string | URL | Request) => {
+        requested.push(String(url));
+        return new Response(JSON.stringify({ code: 0, data: VERSION_PAYLOAD }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        });
+    }) as unknown as typeof fetch;
+
+    try {
+        const result = await new WarthogLegacyApi("http://node.test").getNodeVersion();
+
+        expect(requested).toEqual(["http://node.test/tools/version"]);
+        expect(result.success).toBe(true);
+    } finally {
+        globalThis.fetch = original;
+    }
+});
+
+test("the transport is used for every request, not just the first", async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () => {
+        throw new Error("the global fetch should not be used");
+    }) as unknown as typeof fetch;
+
+    try {
+        const requested: string[] = [];
+        const transport = async (url: string) => {
+            requested.push(url);
+            return new Response(JSON.stringify({ code: 0, data: VERSION_PAYLOAD }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            });
+        };
+
+        const legacy = new WarthogLegacyApi("http://node.test", { fetch: transport });
+        const defi = new WarthogDeFiApi("http://node.test", { fetch: transport });
+
+        await legacy.getNodeVersion();
+        await defi.getNodeVersion();
+
+        expect(requested).toEqual([
+            "http://node.test/tools/version",
+            "http://node.test/version",
+        ]);
+    } finally {
+        globalThis.fetch = original;
+    }
+});
+
+test("a transport that fails surfaces the failure rather than falling back", async () => {
+    const original = globalThis.fetch;
+    let globalCalled = false;
+    globalThis.fetch = (async () => {
+        globalCalled = true;
+        return new Response(JSON.stringify({ code: 0, data: VERSION_PAYLOAD }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        });
+    }) as unknown as typeof fetch;
+
+    try {
+        const api = new WarthogDeFiApi("http://node.test", {
+            fetch: async () => {
+                throw new Error("Failed to fetch");
+            },
+        });
+
+        // The transport threw, so the call rejects. There is no silent
+        // retry through the global fetch.
+        await expect(api.getNodeVersion()).rejects.toThrow("Failed to fetch");
+        expect(globalCalled).toBe(false);
+    } finally {
+        globalThis.fetch = original;
+    }
+});

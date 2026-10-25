@@ -404,6 +404,32 @@ await api.getNodeVersion()
 The known node lists are split the same way: `KNOWN_NODES_LEGACY` and
 `KNOWN_NODES_DEFI`.
 
+### The Transport
+**File:** `src/types/Api.ts`
+
+Every request goes through one transport. By default it is the global
+`fetch`, but a client can be given a different one:
+
+```typescript
+const api = new WarthogDeFiApi(url, { fetch: myTransport });
+```
+
+`FetchLike` is `(url: string, init?: RequestInit) => Promise<Response>`. It
+is a type, not a dependency on the DOM, so the SDK still builds where there
+is no `fetch` at all.
+
+**Why this exists.** The browser wallet runs in a full extension tab as well
+as in the toolbar popup, and its node list includes plain-HTTP nodes. The
+wallet has a `privilegedFetch` that falls back to a background worker when
+the page fetch fails, because the page fetch can be blocked where the
+worker's cannot. Passing that in as the transport is what lets the wallet
+use the SDK's clients rather than its own read path.
+
+Note that a transport is used for the request only, and only if the caller
+gives one. There is no fallback: if the transport throws, the call rejects.
+A transport that silently fell back to the global `fetch` would hide the
+failure the caller was trying to handle.
+
 ### Node Version
 **File:** `src/types/NodeVersion.ts`
 

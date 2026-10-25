@@ -157,6 +157,33 @@ export interface RequestOptions {
 }
 
 /**
+ * The transport a client uses for its requests.
+ *
+ * This is the shape of the global `fetch`, narrowed to what the clients
+ * actually need. It is a type, not a runtime dependency on the DOM.
+ */
+export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
+
+/**
+ * Options a client takes at construction.
+ */
+export interface ApiOptions {
+    /**
+     * The transport to use for every request.
+     *
+     * Defaults to the global `fetch`. Supplying one is how a caller runs the
+     * client somewhere the global `fetch` does not go: a browser extension
+     * that has to route through a background worker, or a test that wants to
+     * count requests.
+     *
+     * The transport is used for the request only. It does not have to be
+     * `fetch`: any function that takes a URL and returns a `Response` will
+     * do.
+     */
+    fetch?: FetchLike;
+}
+
+/**
  * Shared behaviour of the two node clients.
  *
  * The two node families are not the same API, so they get a client each, and
@@ -170,7 +197,18 @@ export abstract class WarthogApiBase {
      */
     protected abstract readonly version: WarthogApiVersion;
 
-    constructor(public readonly baseUrl: string) {}
+    constructor(public readonly baseUrl: string, options?: ApiOptions) {
+        this.fetchImpl = options?.fetch;
+    }
+
+    /**
+     * The transport used for every request.
+     *
+     * Undefined means the global `fetch`, which is what almost every caller
+     * wants. A caller that needs something else (a browser extension routing
+     * through a worker, a test counting requests) passes one in.
+     */
+    protected readonly fetchImpl?: FetchLike;
 
     /**
      * Make an HTTP request to the API and hand back the raw payload.
@@ -210,7 +248,8 @@ export abstract class WarthogApiBase {
 
         const body = options?.body ? JSON.stringify(options.body, replacer) : undefined;
 
-        const response = await fetch(url, {
+        const transport = this.fetchImpl ?? fetch;
+        const response = await transport(url, {
             method: options?.method || 'GET',
             headers: { 'Content-Type': 'application/json' },
             body,
@@ -324,9 +363,10 @@ export class WarthogLegacyApi extends WarthogApiBase {
     /**
      * Create a new client.
      * @param baseUrl - Base URL of the Warthog node
+     * @param options - Client options, such as a custom transport
      */
-    constructor(baseUrl: string = KNOWN_NODES_LEGACY[0]) {
-        super(baseUrl);
+    constructor(baseUrl: string = KNOWN_NODES_LEGACY[0], options?: ApiOptions) {
+        super(baseUrl, options);
     }
 
     /**
@@ -400,9 +440,10 @@ export class WarthogDeFiApi extends WarthogApiBase {
     /**
      * Create a new client.
      * @param baseUrl - Base URL of the Warthog node
+     * @param options - Client options, such as a custom transport
      */
-    constructor(baseUrl: string = KNOWN_NODES_DEFI[0]) {
-        super(baseUrl);
+    constructor(baseUrl: string = KNOWN_NODES_DEFI[0], options?: ApiOptions) {
+        super(baseUrl, options);
     }
 
     /**

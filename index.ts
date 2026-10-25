@@ -10,7 +10,7 @@ export { ChainPin } from "./src/types/ChainPin";
 export { DeFiWartBalance, TokenBalance } from "./src/types/Balance";
 export { NodeVersion } from "./src/types/NodeVersion";
 export { WarthogLegacyApi, WarthogDeFiApi, WarthogApiBase, ChainHead, KNOWN_NODES_LEGACY, KNOWN_NODES_DEFI } from "./src/types/Api";
-export type { NodeUrl, LegacyNodeUrl, DeFiNodeUrl, ApiResult, ApiSuccess, ApiError, WarthogApiVersion, SubmitTransactionData, AnyWarthogApi } from "./src/types/Api";
+export type { NodeUrl, LegacyNodeUrl, DeFiNodeUrl, ApiResult, ApiSuccess, ApiError, WarthogApiVersion, SubmitTransactionData, AnyWarthogApi, FetchLike, ApiOptions } from "./src/types/Api";
 export { HistoryCacheRunner } from "./src/HistoryCache";
 export type {
   HistoryBlock,
