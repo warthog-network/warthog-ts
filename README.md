@@ -45,20 +45,20 @@ const isValid = Address.validate('0000000000000000000000000000000000000000de47c9
 console.log('Valid:', isValid);  // true
 ```
 
-### ParsedFunds and TokenDecimals
+### FundsDecimal and TokenDecimals
 
 Parse currency strings into structured data.
 
 ```typescript
-import { ParsedFunds, TokenDecimals, Funds } from 'warthog-ts';
+import { FundsDecimal, TokenDecimals, Funds } from 'warthog-ts';
 
 // Parse a decimal string into its components
-const pf = ParsedFunds.parse('123.45');
-// Result: { val: 12345n, decimalPlaces: 2 }
+const fd = FundsDecimal.parse('123.45');
+// Result: { funds: 12345n, decimals: TokenDecimals(2) }
 
 // Convert to a specific token decimals (e.g., WART has 8 decimals)
 const decimals = new TokenDecimals(8);  // Validates range 0-18
-const funds = Funds.fromParsedFunds(pf!, decimals);
+const funds = Funds.parse('123.45', decimals);
 console.log('Funds:', funds?.amount);  // 12345000000n
 ```
 

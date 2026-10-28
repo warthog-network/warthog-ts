@@ -25,22 +25,28 @@ export class TokenDecimals {
 /**
  * Represents a parsed decimal string as a 64-bit integer with decimal place info.
  * Used internally for parsing currency strings.
+ *
+ * This is the counterpart of the node's `FundsDecimal`: the funds (the digits
+ * with the decimal point removed) together with the number of decimal places
+ * the funds are scaled by.
  */
-export class ParsedFunds {
-    val: bigint;
-    decimalPlaces: number;
+export class FundsDecimal {
+    /** The funds: the digits of the amount, with the decimal point removed */
+    funds: bigint;
+    /** The number of decimal places the funds are scaled by */
+    decimals: TokenDecimals;
 
-    constructor(val: bigint, decimalPlaces: number) {
-        this.val = val;
-        this.decimalPlaces = decimalPlaces;
+    constructor(funds: bigint, decimals: number | TokenDecimals) {
+        this.funds = funds;
+        this.decimals = typeof decimals === "number" ? new TokenDecimals(decimals) : decimals;
     }
 
     /**
-     * Parse a decimal string into a ParsedFunds.
+     * Parse a decimal string into a FundsDecimal.
      * @param s - Decimal string (e.g., "123.45")
-     * @returns ParsedFunds or null if invalid
+     * @returns FundsDecimal or null if invalid
      */
-    public static parse(s: string): ParsedFunds | null {
+    public static parse(s: string): FundsDecimal | null {
         const MAX_DIGITS = 20;
 
         let str = "";
@@ -76,32 +82,88 @@ export class ParsedFunds {
             return null;
         }
 
-        return new ParsedFunds(val, digitsAfterDot);
-    }
-}
-
-/**
- * Convert ParsedFunds to a value for the given number of decimal places.
- * @param fd - Parsed funds to convert
- * @param decimals - Target decimal places
- * @returns Value as bigint or null if invalid
- */
-function valueFrom(fd: ParsedFunds, decimals: number): bigint | null {
-    if (fd.decimalPlaces > decimals) {
-        return null;
-    }
-
-    const zeros = decimals - fd.decimalPlaces;
-    let value = fd.val;
-
-    for (let i = 0; i < zeros; i++) {
-        if (MAX_U64 / 10n < value) {
+        // the node stores the number of decimal places as a TokenDecimals,
+        // which cannot hold more than 18
+        if (digitsAfterDot > 18) {
             return null;
         }
-        value *= 10n;
+
+        return new FundsDecimal(val, digitsAfterDot);
     }
 
-    return value;
+    /**
+     * Rescale this amount to the given number of decimal places.
+     *
+     * When the target has more decimal places, the funds are scaled up. When
+     * it has fewer, the funds are scaled down, but only if that does not lose
+     * precision: extra decimal places that are not zeros are rejected.
+     *
+     * This mirrors the node's `FundsDecimal::adjust_decimals`. It mutates
+     * this instance, so call it on a copy if the original must be kept.
+     *
+     * @param target - The number of decimal places to rescale to
+     * @returns true on success, false if the rescale would overflow or lose precision
+     */
+    public adjustDecimals(target: TokenDecimals): boolean {
+        const vd = this.decimals.decimals;
+        const newvd = target.decimals;
+
+        if (vd < newvd) {
+            let v = this.funds;
+            for (let i = 0; i < newvd - vd; i++) {
+                if (MAX_U64 / 10n < v) {
+                    return false;
+                }
+                v *= 10n;
+            }
+            this.funds = v;
+            this.decimals = target;
+        } else if (vd > newvd) {
+            let pow10 = 10n;
+            for (let i = 1; i < vd - newvd; i++) {
+                pow10 *= 10n;
+            }
+            const v = this.funds;
+            if (v % pow10 !== 0n) {
+                // would lose precision
+                return false;
+            }
+            this.funds = v / pow10;
+            this.decimals = target;
+        }
+        return true;
+    }
+
+    /**
+     * Render the amount as a decimal string.
+     *
+     * The number of decimal places is always the full amount of decimal
+     * places of this instance, so trailing zeros are kept: funds of 150 with 2
+     * decimal places render as "1.50".
+     *
+     * This mirrors the node's `FundsDecimal::to_string`.
+     */
+    public toString(): string {
+        const d = this.decimals.decimals;
+        const v = this.funds;
+
+        if (v === 0n) {
+            return "0";
+        }
+
+        const s = v.toString();
+        const p = s.length;
+
+        if (d === 0) {
+            return s;
+        }
+
+        if (p > d) {
+            return `${s.slice(0, p - d)}.${s.slice(p - d)}`;
+        }
+
+        return `0.${"0".repeat(d - p)}${s}`;
+    }
 }
 
 /**
@@ -116,26 +178,29 @@ export class Funds {
 
     /**
      * Parse a decimal string to Funds.
+     *
+     * The parsed amount may have fewer decimal places than the token, in which
+     * case it is scaled up. It may not have more: the node rejects an amount
+     * whose decimal places exceed the token's, even when the excess places are
+     * zeros.
+     *
      * @param string - Decimal string (e.g., "123.45")
      * @param decimals - Token decimals
      * @returns Funds or null if invalid
      */
     public static parse(string: string, decimals: TokenDecimals): Funds | null {
-        const fd = ParsedFunds.parse(string);
+        const fd = FundsDecimal.parse(string);
         if (fd === null) return null;
-        return Funds.fromParsedFunds(fd, decimals);
-    }
-    
-    /**
-     * Convert ParsedFunds to Funds with specific number of decimals.
-     * @param fd - Parsed funds
-     * @param decimals - Token decimals
-     * @returns Funds or null if invalid
-     */
-    public static fromParsedFunds(fd: ParsedFunds, decimals: TokenDecimals): Funds | null {
-        const value = valueFrom(fd, decimals.decimals);
-        if (value === null) return null;
-        return new Funds(value);
+
+        // the node rejects an amount with more decimal places than the token's
+        if (fd.decimals.decimals > decimals.decimals) {
+            return null;
+        }
+        // fd is local, so this may mutate it in place
+        if (!fd.adjustDecimals(decimals)) {
+            return null;
+        }
+        return new Funds(fd.funds);
     }
 
     /**
@@ -174,20 +239,9 @@ export class Wart {
      * @returns Wart or null if invalid
      */
     public static parse(string: string): Wart | null {
-        const fd = ParsedFunds.parse(string);
-        if (fd === null) return null;
-        return Wart.fromParsedFunds(fd);
-    }
-
-    /**
-     * Convert ParsedFunds to Wart.
-     * @param fd - Parsed funds
-     * @returns Wart or null if invalid
-     */
-    public static fromParsedFunds(fd: ParsedFunds): Wart | null {
-        const value = valueFrom(fd, TokenDecimals.WART.decimals);
-        if (value === null) return null;
-        return new Wart(value);
+        const funds = Funds.parse(string, TokenDecimals.WART);
+        if (funds === null) return null;
+        return new Wart(funds.amount);
     }
 
     /**
@@ -200,6 +254,16 @@ export class Wart {
             return null;
         }
         return new Wart(E8);
+    }
+
+    /**
+     * Render the amount as a WART decimal string.
+     *
+     * The amount always carries the full 8 decimal places of WART, so
+     * trailing zeros are kept: 150000000 E8 renders as "1.50000000".
+     */
+    public toString(): string {
+        return new FundsDecimal(this.E8, TokenDecimals.WART).toString();
     }
 
     /**
@@ -230,20 +294,9 @@ export class Liquidity {
      * @returns Liquidity or null if invalid
      */
     public static parse(string: string): Liquidity | null {
-        const fd = ParsedFunds.parse(string);
-        if (fd === null) return null;
-        return Liquidity.fromParsedFunds(fd);
-    }
-
-    /**
-     * Convert ParsedFunds to Liquidity.
-     * @param fd - Parsed funds
-     * @returns Liquidity or null if invalid
-     */
-    public static fromParsedFunds(fd: ParsedFunds): Liquidity | null {
-        const value = valueFrom(fd, TokenDecimals.LIQUIDITY.decimals);
-        if (value === null) return null;
-        return new Liquidity(value);
+        const funds = Funds.parse(string, TokenDecimals.LIQUIDITY);
+        if (funds === null) return null;
+        return new Liquidity(funds.amount);
     }
 
     /**
@@ -257,15 +310,25 @@ export class Liquidity {
         }
         return new Liquidity(E8);
     }
+
+    /**
+     * Render the amount as a liquidity decimal string.
+     *
+     * The amount always carries the full 8 decimal places of a liquidity
+     * unit, so trailing zeros are kept: 150000000 E8 renders as "1.50000000".
+     */
+    public toString(): string {
+        return new FundsDecimal(this.E8, TokenDecimals.LIQUIDITY).toString();
+    }
 }
 
 /**
  * Transaction fee in rounded WART format.
- * 
+ *
  * This is NOT the 16-bit compact representation itself. Instead, it is the result of:
  * 1. Converting WART to 16-bit compact format (CompactFee)
  * 2. Converting back to WART scale
- * 
+ *
  * This is a lossy operation - the original WART value cannot be restored from RoundedFee.
  * Warthog nodes require rounded values on the 64-bit WART scale in API calls, not the
  * raw 16-bit compact representation.

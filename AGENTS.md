@@ -71,16 +71,30 @@ TokenDecimals.WART
 new TokenDecimals(4)
 ```
 
-### ParsedFunds
+### FundsDecimal
 **File:** `src/types/Funds.ts`
 
-Parses a decimal string into integer and decimals components.
+Parses a decimal string into funds and a number of decimal places. This is
+the counterpart of the node's `FundsDecimal`. The number of decimal places is
+a `TokenDecimals`, so it cannot exceed 18.
 
 ```typescript
-import { ParsedFunds } from 'warthog-ts';
+import { FundsDecimal } from 'warthog-ts';
 
-const parsed = ParsedFunds.parse('123.45');
-// Result: { val: 12345n, decimalPlaces: 2 }
+const parsed = FundsDecimal.parse('123.45');
+// Result: { funds: 12345n, decimals: TokenDecimals(2) }
+```
+
+It also carries the node's `adjust_decimals` and `to_string`:
+
+```typescript
+// Rescale to another number of decimal places.
+// Scales up when the target has more, and scales down when it has fewer,
+// but only when that does not lose precision. Returns false otherwise.
+parsed.adjustDecimals(new TokenDecimals(8));
+
+// Render as a decimal string, keeping the trailing zeros.
+parsed.toString();  // "123.45"
 ```
 
 ### Funds
